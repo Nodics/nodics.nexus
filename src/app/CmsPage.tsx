@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { resolveCmsPage } from '../cms/cmsClient';
 import type { CmsResolvedPageContract } from '../cms/cmsContract';
 import { CmsComponentRenderer } from '../cms/RendererRegistry';
+import { NexusRuntimeConfigContext } from '../runtime/NexusRuntimeConfigContext';
 import type {
   NexusHostMapping,
   NexusRuntimeConfig,
@@ -11,6 +12,20 @@ type State =
   | { status: 'loading' }
   | { status: 'ready'; page: CmsResolvedPageContract }
   | { status: 'failed'; message: string };
+
+function customerFriendlyFallbackMessage(message: string) {
+  if (
+    message.includes('timed out') ||
+    message.includes('Failed to fetch') ||
+    message.includes('NetworkError') ||
+    message.includes('CMS delivery returned HTTP 5')
+  )
+    return 'The platform services behind Nexus are starting or being updated. Please try again in a moment.';
+  if (message.includes('not available'))
+    return 'This page is not available right now. Please continue from the Nexus home page or try again shortly.';
+  return 'Nexus content is temporarily unavailable. Please try again in a moment.';
+}
+
 export function CmsPage({
   config,
   mapping,
@@ -25,7 +40,7 @@ export function CmsPage({
   useEffect(() => {
     const controller = new AbortController();
     void resolveCmsPage({
-      cmsBaseUrl: config.cmsBaseUrl,
+      cmsBaseUrl: config.endpoints.cms,
       enterpriseCode: config.enterpriseCode,
       site: mapping.siteCode,
       path,
@@ -61,22 +76,29 @@ export function CmsPage({
     );
   if (state.status === 'failed')
     return (
-      <section className="page-state" role="alert">
-        <p className="eyebrow">Content unavailable</p>
-        <h1>We could not load this page.</h1>
-        <p>{state.message}</p>
-        <button
-          className="button button-primary"
-          onClick={() => {
-            setState({ status: 'loading' });
-            setAttempt((value) => value + 1);
-          }}
-        >
-          Try again
-        </button>
+      <section className="page-state page-state-service" role="alert">
+        <div className="service-state-panel">
+          <p className="eyebrow">Nodics Nexus</p>
+          <h1>We are getting Nexus ready for you.</h1>
+          <p>{customerFriendlyFallbackMessage(state.message)}</p>
+          <div className="service-state-actions">
+            <button
+              className="button button-primary"
+              onClick={() => {
+                setState({ status: 'loading' });
+                setAttempt((value) => value + 1);
+              }}
+            >
+              Try again
+            </button>
+          </div>
+        </div>
       </section>
     );
   const page = state.page.page;
+  const hasPageHero = page.components.some(
+    (component) => component.renderer === 'nexus.component.page-hero',
+  );
   if (
     page.rendererContractVersion !== 1 ||
     page.rendererDeprecated ||
@@ -91,26 +113,28 @@ export function CmsPage({
       </section>
     );
   return (
-    <div
-      className={
-        page.renderer === 'nexus.page.home' ? 'home-page' : 'standard-page'
-      }
-    >
-      {page.renderer === 'nexus.page.standard' ? (
-        <div className="page-title">
-          <p className="eyebrow">Nodics Nexus</p>
-          <h1>{page.name}</h1>
-        </div>
-      ) : null}
-      {[...page.components]
-        .sort((a, b) => a.index - b.index)
-        .map((component) => (
-          <CmsComponentRenderer
-            key={component.code}
-            component={component}
-            channel={config.channel}
-          />
-        ))}
-    </div>
+    <NexusRuntimeConfigContext.Provider value={{ config, mapping }}>
+      <div
+        className={
+          page.renderer === 'nexus.page.home' ? 'home-page' : 'standard-page'
+        }
+      >
+        {page.renderer === 'nexus.page.standard' && !hasPageHero ? (
+          <div className="page-title">
+            <p className="eyebrow">Nodics Nexus</p>
+            <h1>{page.name}</h1>
+          </div>
+        ) : null}
+        {[...page.components]
+          .sort((a, b) => a.index - b.index)
+          .map((component) => (
+            <CmsComponentRenderer
+              key={component.code}
+              component={component}
+              channel={config.channel}
+            />
+          ))}
+      </div>
+    </NexusRuntimeConfigContext.Provider>
   );
 }

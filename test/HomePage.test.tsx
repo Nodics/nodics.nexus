@@ -8,6 +8,7 @@ describe('Nexus corporate homepage renderers', () => {
     const slide: CmsComponentContract = {
       code: 'microservices-banner',
       typeCode: 'bannerSlideType',
+      active: true,
       renderer: 'nexus.component.banner-slide',
       rendererContractVersion: 1,
       rendererChannels: ['web'],
@@ -37,6 +38,7 @@ describe('Nexus corporate homepage renderers', () => {
     const carousel: CmsComponentContract = {
       code: 'banner-carousel',
       typeCode: 'bannerCarouselType',
+      active: true,
       renderer: 'nexus.component.banner-carousel',
       rendererContractVersion: 1,
       rendererChannels: ['web'],

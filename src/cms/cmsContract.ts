@@ -1,6 +1,7 @@
 export interface CmsComponentContract {
   readonly code: string;
   readonly typeCode: string;
+  readonly active: boolean;
   readonly renderer: string;
   readonly rendererContractVersion: number;
   readonly rendererChannels: readonly string[];
@@ -77,6 +78,7 @@ function components(
       return Object.freeze({
         code: string(item.code, `components.${index}.code`),
         typeCode: string(item.typeCode, `components.${index}.typeCode`),
+        active: typeof item.active === 'boolean' ? item.active : true,
         renderer: string(item.renderer, `components.${index}.renderer`),
         rendererContractVersion: integer(
           item.rendererContractVersion,

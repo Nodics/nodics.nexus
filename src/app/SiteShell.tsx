@@ -1,16 +1,40 @@
-import { useEffect, useState, type ReactNode } from 'react';
+import { useEffect, useMemo, useState, type ReactNode } from 'react';
 import { Brand } from '../components/Brand';
 import { SocialLinks } from '../components/SocialLinks';
 
 const navigation = [
-  ['Home', '/'],
-  ['About', '/#aboutus'],
-  ['Features', '/#features'],
-  ['Products', '/#products'],
-  ['Support', '/#support'],
-  ['Blogs', '/#blogs'],
-  ['Contact', '/contact'],
+  ['Home', '/', 'home'],
+  ['About', '/#aboutus', 'about'],
+  ['Features', '/#features', 'features'],
+  ['Products', '/#products', 'products'],
+  ['Support', '/#support', 'support'],
+  ['Blogs', '/#blogs', 'blogs'],
+  ['Contact', '/#contact', 'contact'],
 ] as const;
+
+const homeSectionNavigation = [
+  ['aboutus', 'about'],
+  ['features', 'features'],
+  ['products', 'products'],
+  ['support', 'support'],
+  ['blogs', 'blogs'],
+  ['contact', 'contact'],
+] as const;
+
+function activeNavigationFromPath(pathname: string): string {
+  if (pathname === '/') return 'home';
+  if (pathname.startsWith('/docs')) return 'wiki';
+  if (pathname.startsWith('/blog') || pathname.startsWith('/editorial'))
+    return 'blogs';
+  const segment = pathname.split('/').filter(Boolean)[0];
+  if (
+    segment &&
+    ['about', 'features', 'products', 'support', 'contact'].includes(segment)
+  )
+    return segment;
+  return '';
+}
+
 export function SiteShell({
   axisBaseUrl,
   children,
@@ -19,9 +43,19 @@ export function SiteShell({
   readonly children: ReactNode;
 }) {
   const [headerIsScrolled, setHeaderIsScrolled] = useState(false);
+  const [activeNavigation, setActiveNavigation] = useState(() =>
+    activeNavigationFromPath(window.location.pathname),
+  );
   const wikiHref = '/docs';
   const documentationRoute = window.location.pathname.startsWith('/docs');
   const documentationLanding = window.location.pathname === '/docs';
+  const axisUrl = useMemo(() => {
+    try {
+      return new URL(axisBaseUrl);
+    } catch {
+      return undefined;
+    }
+  }, [axisBaseUrl]);
 
   useEffect(() => {
     const updateHeader = () => setHeaderIsScrolled(window.scrollY > 48);
@@ -30,6 +64,41 @@ export function SiteShell({
     return () => window.removeEventListener('scroll', updateHeader);
   }, []);
 
+  useEffect(() => {
+    const updateActiveNavigation = () => {
+      const pathActiveNavigation = activeNavigationFromPath(
+        window.location.pathname,
+      );
+      if (window.location.pathname !== '/') {
+        setActiveNavigation(pathActiveNavigation);
+        return;
+      }
+      const headerOffset = headerIsScrolled ? 100 : 120;
+      const activeSection = homeSectionNavigation.reduce<string>(
+        (current, [sectionId, navigationId]) => {
+          const section = document.getElementById(sectionId);
+          if (!section) return current;
+          return section.getBoundingClientRect().top <= headerOffset
+            ? navigationId
+            : current;
+        },
+        'home',
+      );
+      setActiveNavigation(activeSection);
+    };
+    updateActiveNavigation();
+    window.addEventListener('scroll', updateActiveNavigation, {
+      passive: true,
+    });
+    window.addEventListener('hashchange', updateActiveNavigation);
+    window.addEventListener('popstate', updateActiveNavigation);
+    return () => {
+      window.removeEventListener('scroll', updateActiveNavigation);
+      window.removeEventListener('hashchange', updateActiveNavigation);
+      window.removeEventListener('popstate', updateActiveNavigation);
+    };
+  }, [headerIsScrolled]);
+
   return (
     <div className="site-shell">
       <header
@@ -37,13 +106,32 @@ export function SiteShell({
       >
         <Brand />
         <nav aria-label="Primary navigation">
-          {navigation.map(([label, href]) => (
-            <a href={href} key={href}>
+          {navigation.map(([label, href, id]) => (
+            <a
+              aria-current={activeNavigation === id ? 'page' : undefined}
+              className={activeNavigation === id ? 'active' : undefined}
+              href={href}
+              key={href}
+            >
               {label}
             </a>
           ))}
-          <a href={axisBaseUrl}>Axis</a>
-          <a className="nav-docs" href={wikiHref}>
+          <a
+            aria-current={
+              axisUrl?.origin === window.location.origin ? 'page' : undefined
+            }
+            className={
+              axisUrl?.origin === window.location.origin ? 'active' : undefined
+            }
+            href={axisBaseUrl}
+          >
+            Axis
+          </a>
+          <a
+            aria-current={activeNavigation === 'wiki' ? 'page' : undefined}
+            className={`nav-docs${activeNavigation === 'wiki' ? ' active' : ''}`}
+            href={wikiHref}
+          >
             Wiki
           </a>
         </nav>

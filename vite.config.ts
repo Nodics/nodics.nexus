@@ -29,7 +29,6 @@ export function buildRuntimeConfig(
   env: Record<string, string>,
 ): NexusRuntimeConfig {
   return parseNexusRuntimeConfig({
-    cmsBaseUrl: required(env, 'NEXUS_CMS_BASE_URL'),
     axisBaseUrl: required(env, 'NEXUS_AXIS_BASE_URL'),
     platformBaseUrl: required(env, 'NEXUS_PLATFORM_BASE_URL'),
     enterpriseCode: required(env, 'NEXUS_ENTERPRISE_CODE'),
@@ -49,7 +48,9 @@ export function buildRuntimeConfig(
   });
 }
 function runtimePlugin(config: NexusRuntimeConfig): Plugin {
-  const source = `${JSON.stringify(config, null, 2)}\n`;
+  const { endpoints, ...publicConfig } = config;
+  void endpoints;
+  const source = `${JSON.stringify(publicConfig, null, 2)}\n`;
   return {
     name: 'nexus-runtime-config',
     configureServer(server) {

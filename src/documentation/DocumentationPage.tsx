@@ -348,7 +348,7 @@ export function DocumentationPage({
     if (!source) return;
     const controller = new AbortController();
     void resolveCmsPage({
-      cmsBaseUrl: config.cmsBaseUrl,
+      cmsBaseUrl: config.endpoints.cms,
       enterpriseCode: config.enterpriseCode,
       site: source.site,
       path,

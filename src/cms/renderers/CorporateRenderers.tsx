@@ -1,10 +1,35 @@
-import { useEffect, useState, type CSSProperties } from 'react';
+import { useEffect, useState, type CSSProperties, type FormEvent } from 'react';
 
+import {
+  getContactForm,
+  listTestimonials,
+  submitContact,
+  type NexusContactFormField,
+} from '../../api/engagementApi';
+import { listEditorialArticles } from '../../api/editorialApi';
+import { useOptionalNexusRuntimeConfig } from '../../runtime/NexusRuntimeConfigContext';
+import { componentIsVisible } from '../componentVisibility';
 import type { CmsComponentContract } from '../cmsContract';
 import { referenceImageSource } from '../referenceImages';
 import { items, safeHref, strings, text } from './propertyReaders';
 
 type Props = { readonly component: CmsComponentContract };
+type TestimonialCard = {
+  quote?: unknown;
+  name?: unknown;
+  role?: unknown;
+  avatarReferenceImageCode?: unknown;
+  avatarAlt?: unknown;
+};
+type EditorialCard = {
+  label?: unknown;
+  title?: unknown;
+  summary?: unknown;
+  href?: unknown;
+  linkLabel?: unknown;
+  referenceImageCode?: unknown;
+  imageAlt?: unknown;
+};
 const Link = ({
   href,
   label,
@@ -133,10 +158,37 @@ export function BannerSlideRenderer({ component }: Props) {
   );
 }
 
+export function PageHeroRenderer({ component }: Props) {
+  const p = component.properties;
+  const source = referenceImageSource(text(p, 'referenceImageCode'));
+  const currentLabel = text(p, 'breadcrumbLabel', text(p, 'heading'));
+  return (
+    <section
+      className="secondary-page-hero"
+      aria-labelledby={`${component.code}-title`}
+    >
+      {source ? <img src={source} alt={text(p, 'imageAlt')} /> : null}
+      <div className="secondary-page-hero-shade" aria-hidden="true" />
+      <div className="secondary-page-hero-copy">
+        <p className="eyebrow">{text(p, 'kicker', 'Nodics Nexus')}</p>
+        <h1 id={`${component.code}-title`}>{text(p, 'heading')}</h1>
+        <nav className="secondary-page-breadcrumbs" aria-label="Breadcrumb">
+          <a href="/">Home</a>
+          <span aria-hidden="true">›</span>
+          <strong>{currentLabel}</strong>
+        </nav>
+        <p>{text(p, 'body')}</p>
+      </div>
+    </section>
+  );
+}
+
 export function BannerCarouselRenderer({ component }: Props) {
   const p = component.properties;
   const slides = component.components.filter(
-    (child) => child.renderer === 'nexus.component.banner-slide',
+    (child) =>
+      child.renderer === 'nexus.component.banner-slide' &&
+      componentIsVisible(child),
   );
   const [activeSlide, setActiveSlide] = useState(0);
   const [transitionEffect, setTransitionEffect] = useState(0);
@@ -520,14 +572,68 @@ export function GithubRenderer({ component }: Props) {
 
 export function TestimonialsRenderer({ component }: Props) {
   const p = component.properties;
-  const testimonials = items<{
-    quote?: unknown;
-    name?: unknown;
-    role?: unknown;
-    avatarReferenceImageCode?: unknown;
-    avatarAlt?: unknown;
-  }>(p, 'items');
+  const runtime = useOptionalNexusRuntimeConfig();
+  const staticTestimonials = items<TestimonialCard>(p, 'items');
+  const [liveTestimonials, setLiveTestimonials] = useState<
+    readonly TestimonialCard[]
+  >([]);
+  const [liveStatus, setLiveStatus] = useState<'idle' | 'ready' | 'failed'>(
+    'idle',
+  );
   const [active, setActive] = useState(0);
+  const region = text(p, 'region', 'global');
+  const limit = Number(text(p, 'limit', '8')) || 8;
+  const engagementBaseUrl = runtime?.config.endpoints.engagement;
+  const channel = runtime?.config.channel;
+  const enterpriseCode = runtime?.config.enterpriseCode;
+  const locale = runtime?.config.defaultLocale;
+  const requestTimeoutMs = runtime?.config.requestTimeoutMs;
+  const testimonials =
+    liveStatus === 'ready' && liveTestimonials.length
+      ? liveTestimonials
+      : staticTestimonials;
+
+  useEffect(() => {
+    if (
+      !engagementBaseUrl ||
+      !channel ||
+      !enterpriseCode ||
+      !locale ||
+      !requestTimeoutMs
+    )
+      return undefined;
+    const controller = new AbortController();
+    listTestimonials({
+      baseUrl: engagementBaseUrl,
+      channel,
+      enterpriseCode,
+      limit,
+      locale,
+      region,
+      signal: controller.signal,
+      timeoutMs: requestTimeoutMs,
+    })
+      .then((response) => {
+        if (!controller.signal.aborted) {
+          setLiveTestimonials(response);
+          setLiveStatus('ready');
+          setActive(0);
+        }
+      })
+      .catch(() => {
+        if (!controller.signal.aborted) setLiveStatus('failed');
+      });
+    return () => controller.abort();
+  }, [
+    channel,
+    engagementBaseUrl,
+    enterpriseCode,
+    limit,
+    locale,
+    requestTimeoutMs,
+    region,
+  ]);
+
   useEffect(() => {
     if (testimonials.length < 2) return undefined;
     const timer = window.setInterval(
@@ -682,19 +788,81 @@ function EditorialCarousel({
   component,
   variant,
 }: Props & { readonly variant: 'news' | 'blogs' }) {
-  const entries = items<{
-    label?: unknown;
-    title?: unknown;
-    summary?: unknown;
-    href?: unknown;
-    linkLabel?: unknown;
-    referenceImageCode?: unknown;
-    imageAlt?: unknown;
-  }>(component.properties, 'items');
+  const runtime = useOptionalNexusRuntimeConfig();
+  const staticEntries = items<EditorialCard>(component.properties, 'items');
+  const [liveEntries, setLiveEntries] = useState<readonly EditorialCard[]>([]);
+  const [liveStatus, setLiveStatus] = useState<'idle' | 'ready' | 'failed'>(
+    'idle',
+  );
   const [active, setActive] = useState(0);
-  const entry = entries[active];
-  const move = (direction: number) =>
+  const limit = Number(text(component.properties, 'limit', '6')) || 6;
+  const contentTypeCode = variant === 'news' ? 'NEWS' : 'BLOG';
+  const channel = runtime?.config.channel;
+  const editorialBaseUrl = runtime?.config.endpoints.editorial;
+  const enterpriseCode = runtime?.config.enterpriseCode;
+  const localeCode = runtime?.config.defaultLocale;
+  const requestTimeoutMs = runtime?.config.requestTimeoutMs;
+  const siteCode = runtime?.mapping.siteCode;
+  const entries =
+    liveStatus === 'ready' && liveEntries.length ? liveEntries : staticEntries;
+  const safeActive = entries.length ? Math.min(active, entries.length - 1) : 0;
+  const entry = entries[safeActive];
+  const move = (direction: number) => {
+    if (!entries.length) return;
     setActive((value) => (value + direction + entries.length) % entries.length);
+  };
+
+  useEffect(() => {
+    if (
+      !editorialBaseUrl ||
+      !channel ||
+      !enterpriseCode ||
+      !localeCode ||
+      !requestTimeoutMs ||
+      !siteCode
+    )
+      return undefined;
+    const controller = new AbortController();
+    listEditorialArticles({
+      baseUrl: editorialBaseUrl,
+      channel,
+      contentTypeCode,
+      enterpriseCode,
+      limit,
+      localeCode,
+      signal: controller.signal,
+      siteCode,
+      timeoutMs: requestTimeoutMs,
+    })
+      .then((articles) => {
+        if (controller.signal.aborted) return;
+        setLiveEntries(
+          articles.map((article) => ({
+            href: article.href,
+            label: contentTypeCode === 'NEWS' ? 'News' : 'Blog',
+            linkLabel: 'Read more',
+            summary: article.summary,
+            title: article.title,
+          })),
+        );
+        setLiveStatus('ready');
+        setActive(0);
+      })
+      .catch(() => {
+        if (!controller.signal.aborted) setLiveStatus('failed');
+      });
+    return () => controller.abort();
+  }, [
+    channel,
+    editorialBaseUrl,
+    contentTypeCode,
+    enterpriseCode,
+    limit,
+    localeCode,
+    requestTimeoutMs,
+    siteCode,
+  ]);
+
   const source =
     entry && typeof entry.referenceImageCode === 'string'
       ? referenceImageSource(entry.referenceImageCode)
@@ -708,7 +876,7 @@ function EditorialCarousel({
           <Header component={component} />
           {entries.length > 1 ? (
             <CarouselControls
-              active={active}
+              active={safeActive}
               count={entries.length}
               label={variant === 'news' ? 'news item' : 'blog'}
               onMove={move}
@@ -718,7 +886,7 @@ function EditorialCarousel({
         {entry ? (
           <article
             className="editorial-slide"
-            key={`${component.code}-${active}`}
+            key={`${component.code}-${safeActive}`}
             aria-live="polite"
           >
             <div className="editorial-image-wrap">
@@ -732,7 +900,7 @@ function EditorialCarousel({
               <span>{typeof entry.label === 'string' ? entry.label : ''}</span>
             </div>
             <div className="editorial-copy">
-              <small>{`${String(active + 1).padStart(2, '0')} — ${String(entries.length).padStart(2, '0')}`}</small>
+              <small>{`${String(safeActive + 1).padStart(2, '0')} — ${String(entries.length).padStart(2, '0')}`}</small>
               <h3>{typeof entry.title === 'string' ? entry.title : ''}</h3>
               <p>{typeof entry.summary === 'string' ? entry.summary : ''}</p>
               {href ? (
@@ -750,6 +918,12 @@ function EditorialCarousel({
             {text(component.properties, 'emptyMessage')}
           </p>
         )}
+        {text(component.properties, 'href') ? (
+          <Link
+            href={text(component.properties, 'href')}
+            label={text(component.properties, 'linkLabel', 'View all')}
+          />
+        ) : null}
       </div>
     </section>
   );
@@ -765,18 +939,133 @@ export function BlogCarouselRenderer({ component }: Props) {
 
 export function ContactRenderer({ component }: Props) {
   const p = component.properties;
+  const runtime = useOptionalNexusRuntimeConfig();
   const href = text(p, 'emailHref') || text(p, 'href');
   const label = text(p, 'emailLabel') || text(p, 'linkLabel');
   const conversationItems = items<{
     title?: unknown;
     text?: unknown;
   }>(p, 'items');
-  const formFields = items<{
+  const staticFormFields = items<{
     name?: unknown;
     label?: unknown;
     type?: unknown;
     multiline?: unknown;
+    required?: unknown;
   }>(p, 'formFields');
+  const [liveFormFields, setLiveFormFields] = useState<
+    readonly NexusContactFormField[]
+  >([]);
+  const [formStatus, setFormStatus] = useState<'idle' | 'ready' | 'failed'>(
+    'idle',
+  );
+  const [submissionStatus, setSubmissionStatus] = useState<
+    'idle' | 'submitting' | 'submitted' | 'failed'
+  >('idle');
+  const [submissionMessage, setSubmissionMessage] = useState('');
+  const definitionCode = text(p, 'formDefinitionCode', 'nexus-contact');
+  const engagementBaseUrl = runtime?.config.endpoints.engagement;
+  const enterpriseCode = runtime?.config.enterpriseCode;
+  const requestTimeoutMs = runtime?.config.requestTimeoutMs;
+  const formFields =
+    formStatus === 'ready' && liveFormFields.length
+      ? liveFormFields
+      : staticFormFields.map((field, index) => {
+          const name =
+            typeof field.name === 'string' ? field.name : `field-${index}`;
+          const type = typeof field.type === 'string' ? field.type : 'text';
+          return {
+            label: typeof field.label === 'string' ? field.label : name,
+            multiline: field.multiline === true || type === 'textarea',
+            name,
+            required:
+              field.required === true ||
+              ['contactEmail', 'email', 'message', 'subject'].includes(name),
+            type: type === 'email' || type === 'tel' ? type : 'text',
+          };
+        });
+
+  useEffect(() => {
+    if (!engagementBaseUrl || !enterpriseCode || !requestTimeoutMs)
+      return undefined;
+    const controller = new AbortController();
+    getContactForm({
+      baseUrl: engagementBaseUrl,
+      definitionCode,
+      enterpriseCode,
+      signal: controller.signal,
+      timeoutMs: requestTimeoutMs,
+    })
+      .then((definition) => {
+        if (controller.signal.aborted) return;
+        setLiveFormFields(definition?.fields || []);
+        setFormStatus('ready');
+      })
+      .catch(() => {
+        if (!controller.signal.aborted) setFormStatus('failed');
+      });
+    return () => controller.abort();
+  }, [definitionCode, engagementBaseUrl, enterpriseCode, requestTimeoutMs]);
+
+  const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    const engagementEndpoint = runtime?.config.endpoints.engagement;
+    if (!runtime || !engagementEndpoint || submissionStatus === 'submitting') {
+      setSubmissionStatus('failed');
+      setSubmissionMessage(
+        'Submission is not available right now. Please try again shortly.',
+      );
+      return;
+    }
+    const formElement = event.currentTarget;
+    const formData = new FormData(formElement);
+    const value = (...names: readonly string[]) => {
+      for (const name of names) {
+        const raw = formData.get(name);
+        if (typeof raw === 'string' && raw.trim()) return raw.trim();
+      }
+      return '';
+    };
+    const payload = {
+      contactEmail: value('contactEmail', 'email'),
+      contactPhone: value('contactPhone', 'phone', 'telephone'),
+      message: value('message', 'body', 'comments'),
+      preferredChannel: value('preferredChannel') || 'EMAIL',
+      subject:
+        value('subject', 'topic') ||
+        value('name', 'fullName') ||
+        text(p, 'defaultSubject', 'Nexus contact enquiry'),
+      type: value('type') || text(p, 'contactType', 'ENQUIRY'),
+    };
+    setSubmissionStatus('submitting');
+    setSubmissionMessage('');
+    submitContact({
+      baseUrl: engagementEndpoint,
+      enterpriseCode: runtime.config.enterpriseCode,
+      idempotencyKey:
+        typeof crypto !== 'undefined' && 'randomUUID' in crypto
+          ? crypto.randomUUID()
+          : `${component.code}-${Date.now()}`,
+      payload,
+      timeoutMs: runtime.config.requestTimeoutMs,
+    })
+      .then((submission) => {
+        setSubmissionStatus('submitted');
+        setSubmissionMessage(
+          submission.referenceCode
+            ? `Request received. Reference: ${submission.referenceCode}`
+            : 'Request received.',
+        );
+        formElement.reset();
+      })
+      .catch(() => {
+        setSubmissionStatus('failed');
+        setSubmissionMessage(
+          'Submission is not available right now. Please try again shortly.',
+        );
+      });
+  };
+
   return (
     <section className="contact-section" id={text(p, 'anchor') || undefined}>
       <div className="section-wrap">
@@ -813,17 +1102,10 @@ export function ContactRenderer({ component }: Props) {
               </p>
               <h3>{text(p, 'formHeading', "Let's start working")}</h3>
               <p className="contact-form-body">{text(p, 'formBody')}</p>
-              <form
-                className="contact-form"
-                onSubmit={(event) => event.preventDefault()}
-              >
+              <form className="contact-form" onSubmit={handleSubmit}>
                 {formFields.map((field, index) => {
-                  const name =
-                    typeof field.name === 'string'
-                      ? field.name
-                      : `field-${index}`;
-                  const fieldLabel =
-                    typeof field.label === 'string' ? field.label : '';
+                  const name = field.name || `field-${index}`;
+                  const fieldLabel = field.label || name;
                   return (
                     <label
                       className={field.multiline ? 'is-message' : undefined}
@@ -831,28 +1113,41 @@ export function ContactRenderer({ component }: Props) {
                     >
                       <span>{fieldLabel}</span>
                       {field.multiline ? (
-                        <textarea name={name} rows={3} />
+                        <textarea
+                          name={name}
+                          required={field.required}
+                          rows={3}
+                        />
                       ) : (
                         <input
                           name={name}
-                          type={
-                            typeof field.type === 'string' ? field.type : 'text'
-                          }
+                          required={field.required}
+                          type={field.type || 'text'}
                         />
                       )}
                     </label>
                   );
                 })}
                 <div className="contact-form-action">
-                  <button type="submit" disabled>
+                  <button
+                    type="submit"
+                    disabled={!runtime || submissionStatus === 'submitting'}
+                  >
                     {text(p, 'formSubmitLabel', 'Send enquiry')}
                   </button>
-                  <small>
-                    {text(
-                      p,
-                      'formStatus',
-                      'Online submission will be enabled with the approved contact service.',
-                    )}
+                  <small aria-live="polite">
+                    {submissionMessage ||
+                      (runtime
+                        ? text(
+                            p,
+                            'formStatus',
+                            'Submissions are routed through Nodics Engagement.',
+                          )
+                        : text(
+                            p,
+                            'formStatus',
+                            'Online submission will be enabled with the approved contact service.',
+                          ))}
                   </small>
                 </div>
               </form>

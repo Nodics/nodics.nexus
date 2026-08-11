@@ -3,9 +3,13 @@ import { describe, expect, it } from 'vitest';
 import { CmsComponentRenderer } from '../src/cms/RendererRegistry';
 import type { CmsComponentContract } from '../src/cms/cmsContract';
 
-const component = (renderer: string): CmsComponentContract => ({
+const component = (
+  renderer: string,
+  overrides: Partial<CmsComponentContract> = {},
+): CmsComponentContract => ({
   code: 'test',
   typeCode: 'testType',
+  active: true,
   renderer,
   rendererContractVersion: 1,
   rendererChannels: ['web'],
@@ -18,6 +22,7 @@ const component = (renderer: string): CmsComponentContract => ({
   slot: 'main',
   index: 0,
   components: [],
+  ...overrides,
 });
 describe('CMS renderer registry', () => {
   it('renders an allowlisted component', () => {
@@ -50,5 +55,16 @@ describe('CMS renderer registry', () => {
       />,
     );
     expect(screen.getByRole('alert')).toHaveTextContent('not compatible');
+  });
+  it('does not render a component explicitly marked inactive by the backend', () => {
+    render(
+      <CmsComponentRenderer
+        component={component('nexus.component.content', { active: false })}
+        channel="web"
+      />,
+    );
+    expect(
+      screen.queryByRole('heading', { name: 'A governed platform' }),
+    ).not.toBeInTheDocument();
   });
 });
