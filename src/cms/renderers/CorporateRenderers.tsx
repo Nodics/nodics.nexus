@@ -795,7 +795,7 @@ function EditorialCarousel({
     'idle',
   );
   const [active, setActive] = useState(0);
-  const limit = Number(text(component.properties, 'limit', '6')) || 6;
+  const limit = Number(text(component.properties, 'limit', '4')) || 4;
   const contentTypeCode = variant === 'news' ? 'NEWS' : 'BLOG';
   const channel = runtime?.config.channel;
   const editorialBaseUrl = runtime?.config.endpoints.editorial;

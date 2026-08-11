@@ -1,6 +1,9 @@
 import { useEffect, useState } from 'react';
 import { resolveCmsPage } from '../cms/cmsClient';
-import type { CmsResolvedPageContract } from '../cms/cmsContract';
+import type {
+  CmsComponentContract,
+  CmsResolvedPageContract,
+} from '../cms/cmsContract';
 import { CmsComponentRenderer } from '../cms/RendererRegistry';
 import { NexusRuntimeConfigContext } from '../runtime/NexusRuntimeConfigContext';
 import type {
@@ -24,6 +27,31 @@ function customerFriendlyFallbackMessage(message: string) {
   if (message.includes('not available'))
     return 'This page is not available right now. Please continue from the Nexus home page or try again shortly.';
   return 'Nexus content is temporarily unavailable. Please try again in a moment.';
+}
+
+function fallbackPageHero(pageName: string): CmsComponentContract {
+  const label = pageName.replace(/^Nodics\s+/u, '').trim() || pageName;
+  return {
+    code: 'nexusFallbackPageHero',
+    typeCode: 'nexusPageHeroType',
+    active: true,
+    renderer: 'nexus.component.page-hero',
+    rendererContractVersion: 1,
+    rendererChannels: ['web'],
+    rendererDeprecated: false,
+    slot: 'main',
+    index: -1,
+    components: [],
+    properties: {
+      kicker: 'Nodics Nexus',
+      heading: pageName,
+      breadcrumbLabel: label,
+      body: 'Explore this Nodics Nexus section through the same connected enterprise experience.',
+      referenceImageCode: 'nodicsAboutArchitecture',
+      imageAlt:
+        'Enterprise architects shaping a connected modular Nodics platform',
+    },
+  };
 }
 
 export function CmsPage({
@@ -120,10 +148,10 @@ export function CmsPage({
         }
       >
         {page.renderer === 'nexus.page.standard' && !hasPageHero ? (
-          <div className="page-title">
-            <p className="eyebrow">Nodics Nexus</p>
-            <h1>{page.name}</h1>
-          </div>
+          <CmsComponentRenderer
+            channel={config.channel}
+            component={fallbackPageHero(page.name || page.code)}
+          />
         ) : null}
         {[...page.components]
           .sort((a, b) => a.index - b.index)

@@ -158,7 +158,7 @@ describe('Nodics Nexus API clients', () => {
     });
   });
 
-  it('reads editorial delivery articles from WCMS and filters by content type', async () => {
+  it('reads editorial delivery articles from WCMS by content type', async () => {
     const fetchMock = vi.fn(() =>
       ok({
         items: [
@@ -168,11 +168,6 @@ describe('Nodics Nexus API clients', () => {
             slug: 'platform-news',
             summary: 'News summary',
             title: 'Platform news',
-          },
-          {
-            contentTypeCode: 'BLOG',
-            slug: 'architecture-blog',
-            title: 'Architecture blog',
           },
         ],
       }),
@@ -202,7 +197,7 @@ describe('Nodics Nexus API clients', () => {
     ]);
     const [url] = fetchMock.mock.calls[0] as unknown as [URL, RequestInit];
     expect(String(url)).toBe(
-      'http://localhost:4310/nodics/editorial/v0/delivery/articles?siteCode=nexusCorporateSite&localeCode=en&channel=web&limit=6',
+      'http://localhost:4310/nodics/editorial/v0/delivery/types/NEWS/articles?siteCode=nexusCorporateSite&localeCode=en&channel=web&limit=6',
     );
   });
 });

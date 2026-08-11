@@ -56,7 +56,10 @@ export async function listEditorialArticles(
     readonly limit?: number;
   },
 ): Promise<readonly NexusEditorialArticle[]> {
-  const path = new URL('v0/delivery/articles', `${input.baseUrl}/`);
+  const articlePath = input.contentTypeCode
+    ? `v0/delivery/types/${encodeURIComponent(input.contentTypeCode)}/articles`
+    : 'v0/delivery/articles';
+  const path = new URL(articlePath, `${input.baseUrl}/`);
   path.searchParams.set('siteCode', input.siteCode);
   path.searchParams.set('localeCode', input.localeCode);
   path.searchParams.set('channel', input.channel);
@@ -67,9 +70,5 @@ export async function listEditorialArticles(
   return (response.items || [])
     .map(article)
     .filter((item): item is NexusEditorialArticle => Boolean(item))
-    .filter(
-      (item) =>
-        !input.contentTypeCode ||
-        item.contentTypeCode === input.contentTypeCode,
-    );
+    .slice(0, input.limit || 8);
 }
