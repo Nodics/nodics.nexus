@@ -1,6 +1,12 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 
-import { referenceImageSource } from '../referenceImages';
+import {
+  getEditorialArticle,
+  listEditorialArticles,
+  type NexusEditorialArticle,
+} from '../../api/editorialApi';
+import { useOptionalNexusRuntimeConfig } from '../../runtime/NexusRuntimeConfigContext';
+import { mediaImageSource } from '../referenceImages';
 import type { CmsComponentContract } from '../cmsContract';
 import { items, safeHref, strings, text } from './propertyReaders';
 
@@ -11,6 +17,77 @@ type SortMode = 'latest' | 'oldest' | 'title';
 
 const articleItems = (component: CmsComponentContract) =>
   items<Article>(component.properties, 'articles').slice(0, 48);
+
+function listingHref(article: NexusEditorialArticle): string | undefined {
+  if (!article.slug) return article.href;
+  return article.contentTypeCode === 'BLOG'
+    ? `/blog/${article.slug}`
+    : `/news/${article.slug}`;
+}
+
+function articleSlug(article: Article): string {
+  const href = text(article, 'href');
+  return text(article, 'slug') || href.split('/').filter(Boolean).at(-1) || '';
+}
+
+function mergeLiveArticle(
+  liveArticle: NexusEditorialArticle,
+  staticArticles: readonly Article[],
+): Article {
+  const liveSlug = liveArticle.slug || '';
+  const staticArticle =
+    staticArticles.find(
+      (article) =>
+        (liveArticle.articleCode &&
+          text(article, 'code') === liveArticle.articleCode) ||
+        (liveSlug && articleSlug(article) === liveSlug) ||
+        (liveArticle.title && text(article, 'title') === liveArticle.title),
+    ) || {};
+
+  return {
+    ...staticArticle,
+    code: liveArticle.articleCode || text(staticArticle, 'code'),
+    contentTypeCode:
+      liveArticle.contentTypeCode || text(staticArticle, 'contentTypeCode'),
+    href: listingHref(liveArticle) || text(staticArticle, 'href'),
+    imageAlt: liveArticle.imageAlt || text(staticArticle, 'imageAlt'),
+    referenceImageCode:
+      liveArticle.referenceImageCode || text(staticArticle, 'referenceImageCode'),
+    special: liveArticle.special === true,
+    specialFrom: liveArticle.specialFrom || undefined,
+    specialLabel: liveArticle.specialLabel || text(staticArticle, 'specialLabel'),
+    specialRank: liveArticle.specialRank ?? numberValue(staticArticle, 'specialRank'),
+    specialUntil: liveArticle.specialUntil || undefined,
+    specialVariant:
+      liveArticle.specialVariant || text(staticArticle, 'specialVariant'),
+    slug: liveArticle.slug || text(staticArticle, 'slug'),
+    summary: liveArticle.summary || text(staticArticle, 'summary'),
+    title: liveArticle.title || text(staticArticle, 'title'),
+  };
+}
+
+function mergeLiveDetail(
+  staticArticle: Article,
+  liveArticle: NexusEditorialArticle | undefined,
+): Article {
+  if (!liveArticle) return staticArticle;
+  return {
+    ...staticArticle,
+    code: liveArticle.articleCode || text(staticArticle, 'code'),
+    contentTypeCode:
+      liveArticle.contentTypeCode || text(staticArticle, 'contentTypeCode'),
+    href: text(staticArticle, 'href') || listingHref(liveArticle),
+    imageAlt: liveArticle.imageAlt || text(staticArticle, 'imageAlt'),
+    referenceImageCode:
+      liveArticle.referenceImageCode || text(staticArticle, 'referenceImageCode'),
+    summary: liveArticle.summary || text(staticArticle, 'summary'),
+    takeaways: liveArticle.takeaways?.length
+      ? liveArticle.takeaways
+      : strings(staticArticle, 'takeaways'),
+    title: liveArticle.title || text(staticArticle, 'title'),
+    ...(liveArticle.body ? { bodyText: liveArticle.body } : {}),
+  };
+}
 
 function articleDate(article: Article): number {
   const value = text(article, 'date') || text(article, 'publishedAt');
@@ -82,14 +159,16 @@ function displayDate(article: Article): string {
 }
 
 const ArticleCard = ({
+  cmsBaseUrl,
   article,
   viewMode = 'grid',
 }: {
+  readonly cmsBaseUrl?: string | undefined;
   readonly article: Article;
   readonly viewMode?: ViewMode;
 }) => {
   const href = safeHref(text(article, 'href') || text(article, 'slug'));
-  const source = referenceImageSource(text(article, 'referenceImageCode'));
+  const source = mediaImageSource(text(article, 'referenceImageCode'), cmsBaseUrl);
   const tags = articleTags(article).slice(0, 4);
   const label = text(article, 'contentTypeCode', 'Article');
   return (
@@ -120,7 +199,13 @@ const ArticleCard = ({
   );
 };
 
-const SpecialBand = ({ articles }: { readonly articles: readonly Article[] }) =>
+const SpecialBand = ({
+  articles,
+  cmsBaseUrl,
+}: {
+  readonly articles: readonly Article[];
+  readonly cmsBaseUrl?: string | undefined;
+}) =>
   articles.length ? (
     <div className="editorial-special-band" aria-label="Special highlights">
       <div className="editorial-special-intro">
@@ -145,7 +230,11 @@ const SpecialBand = ({ articles }: { readonly articles: readonly Article[] }) =>
             <span className="editorial-special-label">
               {text(article, 'specialLabel', 'Featured')}
             </span>
-            <ArticleCard article={article} viewMode="list" />
+            <ArticleCard
+              article={article}
+              cmsBaseUrl={cmsBaseUrl}
+              viewMode="list"
+            />
           </div>
         ))}
       </div>
@@ -156,14 +245,75 @@ const Listing = ({
   component,
   className = '',
 }: Props & { className?: string }) => {
+  const runtime = useOptionalNexusRuntimeConfig();
   const p = component.properties;
+  const staticArticles = useMemo(() => articleItems(component), [component]);
+  const contentTypeCode = text(p, 'contentTypeCode');
+  const [liveArticles, setLiveArticles] = useState<readonly Article[]>([]);
+  const [liveStatus, setLiveStatus] = useState<'idle' | 'ready' | 'failed'>(
+    'idle',
+  );
   const configuredDefaultView =
     text(p, 'defaultView') === 'list' ? 'list' : 'grid';
   const [viewMode, setViewMode] = useState<ViewMode>(configuredDefaultView);
   const [query, setQuery] = useState('');
   const [category, setCategory] = useState('all');
   const [sortMode, setSortMode] = useState<SortMode>('latest');
-  const articles = articleItems(component);
+  const cmsBaseUrl = runtime?.config.endpoints.cms;
+  const liveListingAvailable = Boolean(
+    runtime?.config.endpoints.editorial &&
+      runtime.mapping.siteCode &&
+      runtime.config.defaultLocale &&
+      runtime.config.channel &&
+      runtime.config.enterpriseCode &&
+      runtime.config.requestTimeoutMs &&
+      contentTypeCode,
+  );
+  useEffect(() => {
+    const editorialBaseUrl = runtime?.config.endpoints.editorial;
+    const siteCode = runtime?.mapping.siteCode;
+    const localeCode = runtime?.config.defaultLocale;
+    const channel = runtime?.config.channel;
+    const enterpriseCode = runtime?.config.enterpriseCode;
+    const requestTimeoutMs = runtime?.config.requestTimeoutMs;
+    if (!liveListingAvailable) return undefined;
+    const controller = new AbortController();
+    listEditorialArticles({
+      baseUrl: editorialBaseUrl ?? '',
+      channel: channel ?? '',
+      contentTypeCode,
+      enterpriseCode: enterpriseCode ?? '',
+      limit: 48,
+      localeCode: localeCode ?? '',
+      signal: controller.signal,
+      siteCode: siteCode ?? '',
+      timeoutMs: requestTimeoutMs ?? 10_000,
+    })
+      .then((articles) => {
+        if (!controller.signal.aborted) {
+          setLiveArticles(
+            articles.map((article) => mergeLiveArticle(article, staticArticles)),
+          );
+          setLiveStatus('ready');
+        }
+      })
+      .catch(() => {
+        if (!controller.signal.aborted) {
+          setLiveArticles([]);
+          setLiveStatus('failed');
+        }
+      });
+    return () => controller.abort();
+  }, [contentTypeCode, liveListingAvailable, runtime, staticArticles]);
+  const articles = useMemo(
+    () =>
+      liveListingAvailable
+        ? liveStatus === 'ready'
+          ? liveArticles
+          : []
+        : staticArticles,
+    [liveArticles, liveListingAvailable, liveStatus, staticArticles],
+  );
   const categories = useMemo(
     () =>
       Array.from(
@@ -283,11 +433,15 @@ const Listing = ({
           <span>{text(p, 'contentTypeCode', 'EDITORIAL')}</span>
         </div>
 
-        <SpecialBand articles={specialArticles} />
+        <SpecialBand articles={specialArticles} cmsBaseUrl={cmsBaseUrl} />
 
         {featuredArticle ? (
           <div className="editorial-featured-panel">
-            <ArticleCard article={featuredArticle} viewMode="list" />
+            <ArticleCard
+              article={featuredArticle}
+              cmsBaseUrl={cmsBaseUrl}
+              viewMode="list"
+            />
           </div>
         ) : (
           <div className="editorial-empty-state">
@@ -299,6 +453,7 @@ const Listing = ({
           <div className={`editorial-grid editorial-grid-${viewMode}`}>
             {remainingArticles.map((article, index) => (
               <ArticleCard
+                cmsBaseUrl={cmsBaseUrl}
                 article={article}
                 viewMode={viewMode}
                 key={`${text(article, 'code')}-${index}`}
@@ -344,12 +499,58 @@ export function EditorialSeriesRenderer(props: Props) {
 }
 
 export function EditorialDetailRenderer({ component }: Props) {
-  const p = component.properties;
-  const source = referenceImageSource(text(p, 'referenceImageCode'));
+  const runtime = useOptionalNexusRuntimeConfig();
+  const [liveArticle, setLiveArticle] = useState<NexusEditorialArticle>();
+  const p = mergeLiveDetail(component.properties, liveArticle);
+  const source = mediaImageSource(
+    text(p, 'referenceImageCode'),
+    runtime?.config.endpoints.cms,
+  );
   const tags = articleTags(p).slice(0, 6);
   const sections = items<Article>(p, 'sections');
   const takeaways = strings(p, 'takeaways');
   const href = safeHref(text(p, 'href'));
+  const bodyParagraphs = text(p, 'bodyText')
+    .split(/\n{2,}/u)
+    .map((paragraph) => paragraph.trim())
+    .filter(Boolean);
+  const liveDetailAvailable = Boolean(
+    runtime?.config.endpoints.editorial &&
+      runtime.mapping.siteCode &&
+      runtime.config.defaultLocale &&
+      runtime.config.channel &&
+      runtime.config.enterpriseCode &&
+      runtime.config.requestTimeoutMs &&
+      window.location.pathname.split('/').filter(Boolean).at(-1),
+  );
+  useEffect(() => {
+    const editorialBaseUrl = runtime?.config.endpoints.editorial;
+    const siteCode = runtime?.mapping.siteCode;
+    const localeCode = runtime?.config.defaultLocale;
+    const channel = runtime?.config.channel;
+    const enterpriseCode = runtime?.config.enterpriseCode;
+    const requestTimeoutMs = runtime?.config.requestTimeoutMs;
+    const slug = window.location.pathname.split('/').filter(Boolean).at(-1);
+    if (!liveDetailAvailable) return undefined;
+    const controller = new AbortController();
+    getEditorialArticle({
+      baseUrl: editorialBaseUrl ?? '',
+      channel: channel ?? '',
+      enterpriseCode: enterpriseCode ?? '',
+      localeCode: localeCode ?? '',
+      signal: controller.signal,
+      siteCode: siteCode ?? '',
+      slug: slug ?? '',
+      timeoutMs: requestTimeoutMs ?? 10_000,
+    })
+      .then((article) => {
+        if (!controller.signal.aborted) setLiveArticle(article);
+      })
+      .catch(() => {
+        if (!controller.signal.aborted) setLiveArticle(undefined);
+      });
+    return () => controller.abort();
+  }, [liveDetailAvailable, runtime]);
   return (
     <article className="editorial-detail editorial-detail-page">
       <div className="editorial-detail-shell">
@@ -399,7 +600,13 @@ export function EditorialDetailRenderer({ component }: Props) {
               <img src={source} alt={text(p, 'imageAlt')} loading="lazy" />
             </figure>
           ) : null}
-          <div className="editorial-body">{text(p, 'bodyText')}</div>
+          {bodyParagraphs.length ? (
+            <div className="editorial-body">
+              {bodyParagraphs.map((paragraph) => (
+                <p key={paragraph}>{paragraph}</p>
+              ))}
+            </div>
+          ) : null}
           {sections.length ? (
             <div className="editorial-detail-sections">
               {sections.map((section, index) => (

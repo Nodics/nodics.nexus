@@ -1,5 +1,6 @@
 import {
   useEffect,
+  useId,
   useMemo,
   useRef,
   useState,
@@ -18,7 +19,7 @@ import { listEditorialArticles } from '../../api/editorialApi';
 import { useOptionalNexusRuntimeConfig } from '../../runtime/NexusRuntimeConfigContext';
 import { componentIsVisible } from '../componentVisibility';
 import type { CmsComponentContract } from '../cmsContract';
-import { referenceImageSource } from '../referenceImages';
+import { mediaImageSource, referenceImageSource } from '../referenceImages';
 import { items, safeHref, strings, text } from './propertyReaders';
 
 type Props = { readonly component: CmsComponentContract };
@@ -1192,8 +1193,18 @@ function EditorialCarousel({
   const localeCode = runtime?.config.defaultLocale;
   const requestTimeoutMs = runtime?.config.requestTimeoutMs;
   const siteCode = runtime?.mapping.siteCode;
-  const entries =
-    liveStatus === 'ready' && liveEntries.length ? liveEntries : staticEntries;
+  const hasLiveEditorial =
+    Boolean(editorialBaseUrl) &&
+    Boolean(channel) &&
+    Boolean(enterpriseCode) &&
+    Boolean(localeCode) &&
+    Boolean(requestTimeoutMs) &&
+    Boolean(siteCode);
+  const entries = hasLiveEditorial
+    ? liveStatus === 'ready'
+      ? liveEntries
+      : []
+    : staticEntries;
   const safeActive = entries.length ? Math.min(active, entries.length - 1) : 0;
   const entry = entries[safeActive];
   const move = (direction: number) => {
@@ -1312,7 +1323,7 @@ function EditorialCarousel({
 
   const source =
     entry && typeof entry.referenceImageCode === 'string'
-      ? referenceImageSource(entry.referenceImageCode)
+      ? mediaImageSource(entry.referenceImageCode, runtime?.config.endpoints.cms)
       : undefined;
   const href =
     entry && typeof entry.href === 'string' ? safeHref(entry.href) : undefined;
@@ -1367,7 +1378,10 @@ function EditorialCarousel({
                       : undefined;
                   const blogSource =
                     typeof blog.referenceImageCode === 'string'
-                      ? referenceImageSource(blog.referenceImageCode)
+                      ? mediaImageSource(
+                          blog.referenceImageCode,
+                          runtime?.config.endpoints.cms,
+                        )
                       : undefined;
                   const title =
                     typeof blog.title === 'string' ? blog.title : '';
@@ -1621,6 +1635,7 @@ export function ContactRenderer({ component }: Props) {
       ? { ...component, properties: p }
       : component;
   const runtime = useOptionalNexusRuntimeConfig();
+  const fallbackId = useId();
   const href = text(p, 'emailHref') || text(p, 'href');
   const label = text(p, 'emailLabel') || text(p, 'linkLabel');
   const conversationItems = items<{
@@ -1731,7 +1746,7 @@ export function ContactRenderer({ component }: Props) {
       idempotencyKey:
         typeof crypto !== 'undefined' && 'randomUUID' in crypto
           ? crypto.randomUUID()
-          : `${component.code}-${Date.now()}`,
+          : `${component.code}-${fallbackId}`,
       payload,
       timeoutMs: runtime.config.requestTimeoutMs,
     })

@@ -10,6 +10,24 @@ export interface NexusEditorialArticle {
   readonly href?: string;
   readonly imageAlt?: string;
   readonly referenceImageCode?: string;
+  readonly special?: boolean;
+  readonly specialFrom?: string;
+  readonly specialLabel?: string;
+  readonly specialRank?: number;
+  readonly specialUntil?: string;
+  readonly specialVariant?: string;
+  readonly takeaways?: readonly string[];
+}
+
+function stringValue(
+  input: Record<string, unknown>,
+  ...keys: readonly string[]
+): string | undefined {
+  for (const key of keys) {
+    const value = input[key];
+    if (typeof value === 'string' && value) return value;
+  }
+  return undefined;
 }
 
 function bodyText(value: unknown): string | undefined {
@@ -33,25 +51,58 @@ function article(value: unknown): NexusEditorialArticle | undefined {
   if (!value || typeof value !== 'object' || Array.isArray(value))
     return undefined;
   const input = value as Record<string, unknown>;
-  const slug = typeof input.slug === 'string' ? input.slug : undefined;
+  const slug = stringValue(input, 'slug');
   return {
-    articleCode:
-      typeof input.articleCode === 'string' ? input.articleCode : undefined,
+    articleCode: stringValue(input, 'articleCode'),
     body: bodyText(input.body),
-    contentTypeCode:
-      typeof input.contentTypeCode === 'string'
-        ? input.contentTypeCode
-        : undefined,
+    contentTypeCode: stringValue(input, 'contentTypeCode'),
     href: slug ? `/articles/${slug}` : undefined,
-    imageAlt: typeof input.imageAlt === 'string' ? input.imageAlt : undefined,
-    referenceImageCode:
-      typeof input.referenceImageCode === 'string'
-        ? input.referenceImageCode
+    imageAlt: stringValue(input, 'imageAlt'),
+    referenceImageCode: stringValue(
+      input,
+      'referenceImageCode',
+      'featuredMediaCode',
+    ),
+    special: input.special === true,
+    specialFrom: stringValue(input, 'specialFrom'),
+    specialLabel: stringValue(input, 'specialLabel'),
+    specialRank:
+      typeof input.specialRank === 'number' && Number.isFinite(input.specialRank)
+        ? input.specialRank
         : undefined,
+    specialUntil: stringValue(input, 'specialUntil'),
+    specialVariant: stringValue(input, 'specialVariant'),
     slug,
-    summary: typeof input.summary === 'string' ? input.summary : undefined,
-    title: typeof input.title === 'string' ? input.title : undefined,
+    summary: stringValue(input, 'summary'),
+    takeaways: Array.isArray(input.takeaways)
+      ? input.takeaways.filter(
+          (item): item is string => typeof item === 'string' && Boolean(item),
+        )
+      : undefined,
+    title: stringValue(input, 'title'),
   };
+}
+
+export async function getEditorialArticle(
+  input: NodicsClientInput & {
+    readonly siteCode: string;
+    readonly localeCode: string;
+    readonly channel: string;
+    readonly slug: string;
+  },
+): Promise<NexusEditorialArticle | undefined> {
+  const path = new URL(
+    `v0/delivery/articles/${encodeURIComponent(input.slug)}`,
+    `${input.baseUrl}/`,
+  );
+  path.searchParams.set('siteCode', input.siteCode);
+  path.searchParams.set('localeCode', input.localeCode);
+  path.searchParams.set('channel', input.channel);
+  const response = await requestNodicsJson<unknown>({
+    ...input,
+    path: path.pathname + path.search,
+  });
+  return article(response);
 }
 
 export async function listEditorialArticles(

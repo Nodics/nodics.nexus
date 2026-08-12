@@ -61,3 +61,19 @@ export const referenceImageSource = (code: string): string | undefined =>
   Object.prototype.hasOwnProperty.call(referenceImages, code)
     ? referenceImages[code as ReferenceImageCode]
     : undefined;
+
+export const mediaImageSource = (
+  code: string,
+  cmsBaseUrl?: string,
+): string | undefined => {
+  const value = code.trim();
+  if (!value) return undefined;
+  const mapped = referenceImageSource(value);
+  if (mapped) return mapped;
+  if (/^(https?:)?\/\//u.test(value) || value.startsWith('/')) return value;
+  if (!cmsBaseUrl) return undefined;
+  return new URL(
+    `/nodics/media/v0/content/${encodeURIComponent(value)}`,
+    cmsBaseUrl,
+  ).toString();
+};

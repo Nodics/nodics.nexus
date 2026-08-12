@@ -6675,12 +6675,13 @@ a {
   white-space: pre-line;
 }
 .editorial-detail-page {
-  width: min(1320px, calc(100% - 2rem));
+  width: min(1320px, calc(100% - clamp(2rem, 5vw, 4.5rem)));
+  padding-block: clamp(1.75rem, 3.6vw, 3.5rem) clamp(3rem, 7vw, 6.5rem);
 }
 .editorial-detail-shell {
   display: grid;
   grid-template-columns: minmax(16rem, 0.28fr) minmax(0, 0.72fr);
-  gap: clamp(1.5rem, 4vw, 4rem);
+  gap: clamp(1.5rem, 3vw, 3.25rem);
   align-items: start;
 }
 .editorial-detail-meta-panel {
@@ -6797,6 +6798,12 @@ a {
   font-size: clamp(1rem, 1.18vw, 1.12rem);
   font-weight: 560;
   line-height: 1.75;
+}
+.editorial-detail-main .editorial-body p {
+  margin: 0 0 1rem;
+}
+.editorial-detail-main .editorial-body p:last-child {
+  margin-bottom: 0;
 }
 .editorial-detail-sections {
   display: grid;
