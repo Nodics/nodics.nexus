@@ -47,6 +47,84 @@ describe('Editorial renderers', () => {
       '/blog/composable-content',
     );
   });
+
+  it('keeps home editorial slide links separate from the view-all listing link', () => {
+    render(
+      <CmsComponentRenderer
+        channel="web"
+        component={component('nexus.component.blog-carousel', {
+          kicker: 'Blogs',
+          heading: 'Latest insights',
+          href: '/blogs',
+          linkLabel: 'View all insights',
+          items: [
+            {
+              label: 'Blog',
+              title: 'Composable content',
+              summary: 'A safe summary.',
+              href: '/blog/composable-content',
+              linkLabel: 'Read insight',
+              referenceImageCode: 'nodicsFeaturesArchitecture',
+              imageAlt: 'Composable content preview',
+            },
+            {
+              label: 'Blog',
+              title: 'Composable operations',
+              summary: 'Another safe summary.',
+              href: '/blog/composable-operations',
+              linkLabel: 'Read insight',
+              referenceImageCode: 'nodicsDeveloperExperience',
+              imageAlt: 'Composable operations preview',
+            },
+          ],
+        })}
+      />,
+    );
+
+    expect(
+      screen.getByRole('link', { name: 'Open Composable content' }),
+    ).toHaveAttribute('href', '/blog/composable-content');
+    expect(
+      screen.getByRole('link', { name: 'Composable content' }),
+    ).toHaveAttribute('href', '/blog/composable-content');
+    expect(
+      screen.getAllByRole('link', { name: /Read insight/ })[0],
+    ).toHaveAttribute('href', '/blog/composable-content');
+    expect(
+      screen.getByRole('link', { name: 'Composable operations' }),
+    ).toHaveAttribute('href', '/blog/composable-operations');
+    expect(
+      screen.getByRole('link', { name: 'View all insights' }),
+    ).toHaveAttribute('href', '/blogs');
+  });
+
+  it('renders long home testimonial quotes without truncating the configured text', () => {
+    const longQuote =
+      'Nodics gives enterprise teams a reusable foundation for platform capability, delivery governance, operational visibility, and AI-assisted implementation while still allowing each customer project to own its journey-specific extensions, integrations, content, and release decisions. The value is not only speed; it is the ability to keep architecture boundaries visible, make backend contracts inspectable, and move from prototype energy into a maintainable production platform without rebuilding the same controls every time.';
+
+    expect(longQuote.length).toBeGreaterThan(500);
+
+    render(
+      <CmsComponentRenderer
+        channel="web"
+        component={component('nexus.component.testimonials', {
+          anchor: 'testimonials',
+          items: [
+            {
+              quote: longQuote,
+              name: 'Aarohi Mehta',
+              role: 'Director of Platform Engineering',
+              avatarReferenceImageCode: 'nexusTestimonialAarohi',
+              avatarAlt: 'Illustrative portrait of Aarohi Mehta',
+            },
+          ],
+        })}
+      />,
+    );
+
+    expect(screen.getByText(`“${longQuote}”`)).toBeInTheDocument();
+  });
+
   it('renders detail without executing supplied markup', () => {
     render(
       <CmsComponentRenderer

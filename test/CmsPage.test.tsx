@@ -31,6 +31,43 @@ afterEach(() => {
 });
 
 describe('Nexus CMS page', () => {
+  it('shows a page-not-found state for unknown CMS routes', async () => {
+    vi.spyOn(globalThis, 'fetch').mockResolvedValueOnce(
+      new Response(JSON.stringify({}), { status: 404 }),
+    );
+
+    render(<CmsPage config={config} mapping={mapping} path="/missing-page" />);
+
+    expect(
+      await screen.findByRole('heading', {
+        name: 'This Nexus page does not exist.',
+      }),
+    ).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Try again' })).toBeNull();
+    expect(screen.getByRole('link', { name: 'Go to home' })).toHaveAttribute(
+      'href',
+      '/',
+    );
+  });
+
+  it('shows a service-unavailable state when CMS cannot serve content', async () => {
+    vi.spyOn(globalThis, 'fetch').mockResolvedValueOnce(
+      new Response(JSON.stringify({}), { status: 503 }),
+    );
+
+    render(<CmsPage config={config} mapping={mapping} path="/support" />);
+
+    expect(
+      await screen.findByRole('heading', {
+        name: 'Nexus services are temporarily unavailable.',
+      }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText(/platform services behind Nexus are starting/i),
+    ).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Try again' })).toBeEnabled();
+  });
+
   it('uses the shared second-level banner fallback when a standard page has no delivered hero', async () => {
     vi.spyOn(globalThis, 'fetch').mockResolvedValueOnce(
       new Response(

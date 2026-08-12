@@ -32,4 +32,31 @@ describe('Nexus site shell navigation', () => {
       within(primaryNavigation).getByRole('link', { name: 'Wiki' }),
     ).toHaveAttribute('aria-current', 'page');
   });
+
+  it('opens the API reference through the documentation tab state', () => {
+    window.history.pushState({}, '', '/');
+    render(
+      <SiteShell axisBaseUrl="http://localhost:3100">
+        <p>Home page</p>
+      </SiteShell>,
+    );
+    expect(screen.getByRole('link', { name: 'API Reference' })).toHaveAttribute(
+      'href',
+      '/docs?tab=api',
+    );
+  });
+
+  it('opens Axis links in a new browser tab', () => {
+    window.history.pushState({}, '', '/');
+    render(
+      <SiteShell axisBaseUrl="http://localhost:3100">
+        <p>Home page</p>
+      </SiteShell>,
+    );
+    for (const link of screen.getAllByRole('link', { name: 'Axis' })) {
+      expect(link).toHaveAttribute('href', 'http://localhost:3100');
+      expect(link).toHaveAttribute('target', '_blank');
+      expect(link).toHaveAttribute('rel', 'noreferrer');
+    }
+  });
 });

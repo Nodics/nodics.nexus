@@ -1,5 +1,9 @@
 import { useEffect, useState } from 'react';
-import { resolveCmsPage } from '../cms/cmsClient';
+import {
+  CmsPageDeliveryError,
+  type CmsPageDeliveryErrorKind,
+  resolveCmsPage,
+} from '../cms/cmsClient';
 import type {
   CmsComponentContract,
   CmsResolvedPageContract,
@@ -14,19 +18,26 @@ import type {
 type State =
   | { status: 'loading' }
   | { status: 'ready'; page: CmsResolvedPageContract }
-  | { status: 'failed'; message: string };
+  | {
+      status: 'failed';
+      kind: CmsPageDeliveryErrorKind;
+      message: string;
+    };
 
-function customerFriendlyFallbackMessage(message: string) {
-  if (
-    message.includes('timed out') ||
-    message.includes('Failed to fetch') ||
-    message.includes('NetworkError') ||
-    message.includes('CMS delivery returned HTTP 5')
-  )
-    return 'The platform services behind Nexus are starting or being updated. Please try again in a moment.';
-  if (message.includes('not available'))
-    return 'This page is not available right now. Please continue from the Nexus home page or try again shortly.';
-  return 'Nexus content is temporarily unavailable. Please try again in a moment.';
+function fallbackContent(kind: CmsPageDeliveryErrorKind) {
+  if (kind === 'not-found')
+    return {
+      eyebrow: 'Page not found',
+      heading: 'This Nexus page does not exist.',
+      body: 'The route you opened is not part of the current Nexus site. Please continue from the home page or use the main navigation.',
+      showRetry: false,
+    };
+  return {
+    eyebrow: 'Nodics Nexus',
+    heading: 'Nexus services are temporarily unavailable.',
+    body: 'The platform services behind Nexus are starting, being updated, or cannot be reached right now. Please try again in a moment.',
+    showRetry: true,
+  };
 }
 
 function fallbackPageHero(pageName: string): CmsComponentContract {
@@ -82,6 +93,10 @@ export function CmsPage({
         if (!controller.signal.aborted)
           setState({
             status: 'failed',
+            kind:
+              error instanceof CmsPageDeliveryError
+                ? error.kind
+                : 'service-unavailable',
             message:
               error instanceof Error
                 ? error.message
@@ -102,27 +117,37 @@ export function CmsPage({
         Loading Nexus content…
       </div>
     );
-  if (state.status === 'failed')
+  if (state.status === 'failed') {
+    const fallback = fallbackContent(state.kind);
     return (
       <section className="page-state page-state-service" role="alert">
         <div className="service-state-panel">
-          <p className="eyebrow">Nodics Nexus</p>
-          <h1>We are getting Nexus ready for you.</h1>
-          <p>{customerFriendlyFallbackMessage(state.message)}</p>
+          <p className="eyebrow">{fallback.eyebrow}</p>
+          <h1>{fallback.heading}</h1>
+          <p>{fallback.body}</p>
+          {state.message ? (
+            <p className="service-state-detail">Reference: {state.message}</p>
+          ) : null}
           <div className="service-state-actions">
-            <button
-              className="button button-primary"
-              onClick={() => {
-                setState({ status: 'loading' });
-                setAttempt((value) => value + 1);
-              }}
-            >
-              Try again
-            </button>
+            {fallback.showRetry ? (
+              <button
+                className="button button-primary"
+                onClick={() => {
+                  setState({ status: 'loading' });
+                  setAttempt((value) => value + 1);
+                }}
+              >
+                Try again
+              </button>
+            ) : null}
+            <a className="button button-secondary" href="/">
+              Go to home
+            </a>
           </div>
         </div>
       </section>
     );
+  }
   const page = state.page.page;
   const hasPageHero = page.components.some(
     (component) => component.renderer === 'nexus.component.page-hero',

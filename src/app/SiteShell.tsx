@@ -21,10 +21,60 @@ const homeSectionNavigation = [
   ['contact', 'contact'],
 ] as const;
 
+const footerGroups = [
+  {
+    title: 'Platform',
+    links: [
+      ['Features', '/#features'],
+      ['Products', '/#products'],
+      ['Technology Stack', '/#products'],
+      ['Support', '/#support'],
+    ],
+  },
+  {
+    title: 'Developers',
+    links: [
+      ['Wiki', '/docs'],
+      ['API Reference', '/docs?tab=api'],
+      ['GitHub', 'https://github.com/Nodics'],
+      ['Axis', ''],
+    ],
+  },
+  {
+    title: 'Company',
+    links: [
+      ['About', '/#aboutus'],
+      ['Ecosystem', '/#ecosystem'],
+      ['Contact', '/#contact'],
+      ['Testimonials', '/#testimonials'],
+    ],
+  },
+  {
+    title: 'Resources',
+    links: [
+      ['Blogs', '/blogs'],
+      ['News', '/news'],
+      ['Documentation Gateway', '/docs'],
+    ],
+  },
+  {
+    title: 'Legal',
+    links: [
+      ['Privacy', '/privacy'],
+      ['Terms', '/terms'],
+      ['Cookies', '/cookies'],
+    ],
+  },
+] as const;
+
 function activeNavigationFromPath(pathname: string): string {
   if (pathname === '/') return 'home';
   if (pathname.startsWith('/docs')) return 'wiki';
-  if (pathname.startsWith('/blog') || pathname.startsWith('/editorial'))
+  if (
+    pathname.startsWith('/blog') ||
+    pathname.startsWith('/news') ||
+    pathname.startsWith('/editorial')
+  )
     return 'blogs';
   const segment = pathname.split('/').filter(Boolean)[0];
   if (
@@ -43,6 +93,7 @@ export function SiteShell({
   readonly children: ReactNode;
 }) {
   const [headerIsScrolled, setHeaderIsScrolled] = useState(false);
+  const [mobileNavigationOpen, setMobileNavigationOpen] = useState(false);
   const [activeNavigation, setActiveNavigation] = useState(() =>
     activeNavigationFromPath(window.location.pathname),
   );
@@ -62,6 +113,14 @@ export function SiteShell({
     updateHeader();
     window.addEventListener('scroll', updateHeader, { passive: true });
     return () => window.removeEventListener('scroll', updateHeader);
+  }, []);
+
+  useEffect(() => {
+    const closeMobileNavigation = () => {
+      if (window.innerWidth > 850) setMobileNavigationOpen(false);
+    };
+    window.addEventListener('resize', closeMobileNavigation);
+    return () => window.removeEventListener('resize', closeMobileNavigation);
   }, []);
 
   useEffect(() => {
@@ -102,16 +161,33 @@ export function SiteShell({
   return (
     <div className="site-shell">
       <header
-        className={`site-header${headerIsScrolled ? ' is-scrolled' : ''}${documentationRoute ? ' docs-context' : ''}${documentationLanding ? ' docs-landing-context' : ''}`}
+        className={`site-header${headerIsScrolled ? ' is-scrolled' : ''}${documentationRoute ? ' docs-context' : ''}${documentationLanding ? ' docs-landing-context' : ''}${mobileNavigationOpen ? ' is-menu-open' : ''}`}
       >
         <Brand />
-        <nav aria-label="Primary navigation">
+        <button
+          aria-controls="primary-navigation"
+          aria-expanded={mobileNavigationOpen}
+          aria-label="Toggle primary navigation"
+          className="mobile-navigation-toggle"
+          onClick={() => setMobileNavigationOpen((open) => !open)}
+          type="button"
+        >
+          <span />
+          <span />
+          <span />
+        </button>
+        <nav
+          aria-label="Primary navigation"
+          className={mobileNavigationOpen ? 'is-open' : undefined}
+          id="primary-navigation"
+        >
           {navigation.map(([label, href, id]) => (
             <a
               aria-current={activeNavigation === id ? 'page' : undefined}
               className={activeNavigation === id ? 'active' : undefined}
               href={href}
               key={href}
+              onClick={() => setMobileNavigationOpen(false)}
             >
               {label}
             </a>
@@ -124,6 +200,9 @@ export function SiteShell({
               axisUrl?.origin === window.location.origin ? 'active' : undefined
             }
             href={axisBaseUrl}
+            onClick={() => setMobileNavigationOpen(false)}
+            rel="noreferrer"
+            target="_blank"
           >
             Axis
           </a>
@@ -131,6 +210,7 @@ export function SiteShell({
             aria-current={activeNavigation === 'wiki' ? 'page' : undefined}
             className={`nav-docs${activeNavigation === 'wiki' ? ' active' : ''}`}
             href={wikiHref}
+            onClick={() => setMobileNavigationOpen(false)}
           >
             Wiki
           </a>
@@ -138,28 +218,47 @@ export function SiteShell({
       </header>
       <main id="main-content">{children}</main>
       <footer className="site-footer">
-        <div>
+        <div className="footer-brand-panel">
           <Brand />
           <p>
             Where enterprise capabilities, technology, and knowledge connect.
           </p>
-        </div>
-        <div>
-          <h2>Explore</h2>
-          {navigation.map(([label, href]) => (
-            <a href={href} key={href}>
-              {label}
+          <div className="footer-connect">
+            <h2>Connect</h2>
+            <SocialLinks />
+            <a href="mailto:nodics.framework@gmail.com">
+              nodics.framework@gmail.com
             </a>
-          ))}
-          <a href={axisBaseUrl}>Axis</a>
+          </div>
         </div>
-        <div>
-          <h2>Connect</h2>
-          <SocialLinks />
-          <a href={wikiHref}>Wiki</a>
+        <div className="footer-link-grid">
+          {footerGroups.map((group) => (
+            <div className="footer-link-column" key={group.title}>
+              <h2>{group.title}</h2>
+              {group.links.map(([label, href]) => (
+                <a
+                  href={label === 'Axis' ? axisBaseUrl : href}
+                  key={`${group.title}-${label}`}
+                  rel={
+                    label === 'Axis' || href.startsWith('https://')
+                      ? 'noreferrer'
+                      : undefined
+                  }
+                  target={
+                    label === 'Axis' || href.startsWith('https://')
+                      ? '_blank'
+                      : undefined
+                  }
+                >
+                  {label}
+                </a>
+              ))}
+            </div>
+          ))}
         </div>
         <div className="footer-legal">
-          <span>© 2026 Nodics</span>
+          <span>© 2026 Nodics. All rights reserved.</span>
+          <span>Nodics Nexus</span>
           <a href="/privacy">Privacy</a>
           <a href="/terms">Terms</a>
           <a href="/cookies">Cookies</a>

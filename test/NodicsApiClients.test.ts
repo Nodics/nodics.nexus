@@ -31,6 +31,8 @@ describe('Nodics Nexus API clients', () => {
       ok([
         {
           attribution: {
+            avatarAlt: 'Illustrative portrait of Ada',
+            avatarReferenceImageCode: 'nexusTestimonialAarohi',
             name: 'Ada',
             organization: 'Nodics Labs',
             role: 'Architect',
@@ -50,6 +52,8 @@ describe('Nodics Nexus API clients', () => {
       }),
     ).resolves.toEqual([
       {
+        avatarAlt: 'Illustrative portrait of Ada',
+        avatarReferenceImageCode: 'nexusTestimonialAarohi',
         name: 'Ada',
         quote: 'Backend governed testimonial.',
         role: 'Architect',

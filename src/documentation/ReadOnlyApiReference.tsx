@@ -11,9 +11,18 @@ interface ApiOperation {
   readonly summary: string;
   readonly description: string;
   readonly moduleName: string;
+  readonly controller: string;
+  readonly operation: string;
   readonly tags: readonly string[];
+  readonly headers: readonly string[];
   readonly parameters: readonly string[];
-  readonly responses: readonly string[];
+  readonly requestBody: string;
+  readonly responses: readonly {
+    readonly status: string;
+    readonly description: string;
+    readonly sample: string;
+  }[];
+  readonly security: readonly string[];
 }
 
 type ApiState =
@@ -34,6 +43,56 @@ function record(value: unknown): Readonly<Record<string, unknown>> | undefined {
 
 function text(value: unknown, fallback = ''): string {
   return typeof value === 'string' ? value.trim().slice(0, 2_000) : fallback;
+}
+
+function resolveReference(
+  root: Readonly<Record<string, unknown>>,
+  value: unknown,
+): Readonly<Record<string, unknown>> | undefined {
+  const source = record(value);
+  const ref = text(source?.['$ref']);
+  if (!ref.startsWith('#/')) return source;
+  const resolved = ref
+    .slice(2)
+    .split('/')
+    .reduce<unknown>((current, segment) => {
+      const currentRecord = record(current);
+      return currentRecord?.[segment];
+    }, root);
+  return record(resolved) ?? source;
+}
+
+function schemaLabel(schema: unknown): string {
+  const item = record(schema);
+  if (!item) return 'value';
+  const ref = text(item['$ref']);
+  if (ref) return ref.split('/').at(-1) ?? 'object';
+  const type = text(item.type, 'object');
+  const format = text(item.format);
+  if (type === 'array') return `array<${schemaLabel(item.items)}>`;
+  return format ? `${type}:${format}` : type;
+}
+
+function sampleFromSchema(schema: unknown): unknown {
+  const item = record(schema);
+  if (!item) return 'value';
+  if (item.example !== undefined) return item.example;
+  const type = text(item.type, item.properties ? 'object' : '');
+  if (type === 'array') return [sampleFromSchema(item.items)];
+  if (type === 'object' || item.properties) {
+    const properties = record(item.properties) ?? {};
+    const entries = Object.entries(properties).slice(0, 8);
+    return Object.fromEntries(
+      entries.map(([name, property]) => [name, sampleFromSchema(property)]),
+    );
+  }
+  if (type === 'integer' || type === 'number') return 0;
+  if (type === 'boolean') return true;
+  return text(item.description, 'string').slice(0, 80) || 'string';
+}
+
+function jsonSample(value: unknown): string {
+  return JSON.stringify(value, null, 2);
 }
 
 function parseOperations(document: unknown): {
@@ -60,18 +119,48 @@ function parseOperations(document: unknown): {
             .filter(Boolean)
             .slice(0, 20)
         : [];
-      const parameters = Array.isArray(operation.parameters)
-        ? operation.parameters.flatMap((value) => {
-            const parameter = record(value);
-            const name = text(parameter?.name);
-            const location = text(parameter?.in);
-            return name && location ? [`${name} (${location})`] : [];
-          })
-        : [];
+      const parametersByLocation = Array.isArray(operation.parameters)
+        ? operation.parameters.reduce<Record<string, string[]>>(
+            (grouped, value) => {
+              const parameter = resolveReference(root, value);
+              const name = text(parameter?.name);
+              const location = text(parameter?.in, 'parameter');
+              if (!name) return grouped;
+              const required =
+                parameter?.required === true ? 'required' : 'optional';
+              const schema = schemaLabel(parameter?.schema);
+              const description = text(parameter?.description);
+              const detail = `${name}: ${schema} (${required})${description ? ` — ${description}` : ''}`;
+              grouped[location] = [...(grouped[location] ?? []), detail];
+              return grouped;
+            },
+            {},
+          )
+        : {};
+      const requestContent = record(record(operation.requestBody)?.content);
+      const jsonRequest = record(requestContent?.['application/json']);
+      const requestSchema = jsonRequest?.schema;
+      const requestBody = requestSchema
+        ? jsonSample(sampleFromSchema(requestSchema))
+        : '';
       const responses = Object.entries(record(operation.responses) ?? {}).map(
-        ([status, value]) =>
-          `${status} — ${text(record(value)?.description, 'Response')}`,
+        ([status, value]) => {
+          const response = resolveReference(root, value);
+          const content = record(response?.content);
+          const jsonResponse = record(content?.['application/json']);
+          const schema = jsonResponse?.schema;
+          return {
+            status,
+            description: text(response?.description, 'Response'),
+            sample: schema ? jsonSample(sampleFromSchema(schema)) : '',
+          };
+        },
       );
+      const security = Array.isArray(operation.security)
+        ? operation.security.flatMap((value) =>
+            Object.keys(record(value) ?? {}),
+          )
+        : [];
       operations.push({
         key: `${method}:${path}`,
         method: method.toUpperCase(),
@@ -79,9 +168,17 @@ function parseOperations(document: unknown): {
         summary: text(operation.summary, 'API operation'),
         description: text(operation.description),
         moduleName: text(nodics?.moduleName, tags[0] ?? 'Other'),
+        controller: text(nodics?.controller),
+        operation: text(nodics?.operation),
         tags,
-        parameters,
+        headers: parametersByLocation.header ?? [],
+        parameters: [
+          ...(parametersByLocation.path ?? []),
+          ...(parametersByLocation.query ?? []),
+        ],
+        requestBody,
         responses,
+        security,
       });
     }
   }
@@ -237,17 +334,67 @@ export function ReadOnlyApiReference({
                             <b>Tags:</b> {operation.tags.join(', ')}
                           </p>
                         ) : null}
-                        {operation.parameters.length > 0 ? (
+                        {operation.controller || operation.operation ? (
                           <p>
-                            <b>Parameters:</b> {operation.parameters.join(', ')}
+                            <b>Backend handler:</b>{' '}
+                            {[operation.operation, operation.controller]
+                              .filter(Boolean)
+                              .join(' via ')}
                           </p>
                         ) : null}
+                        {operation.security.length > 0 ? (
+                          <p>
+                            <b>Security:</b> {operation.security.join(', ')}
+                          </p>
+                        ) : null}
+                        {operation.headers.length > 0 ? (
+                          <div className="api-contract-block">
+                            <b>Sample headers</b>
+                            <ul>
+                              {operation.headers.map((header) => (
+                                <li key={header}>{header}</li>
+                              ))}
+                            </ul>
+                          </div>
+                        ) : null}
+                        {operation.parameters.length > 0 ? (
+                          <div className="api-contract-block">
+                            <b>Path / query parameters</b>
+                            <ul>
+                              {operation.parameters.map((parameter) => (
+                                <li key={parameter}>{parameter}</li>
+                              ))}
+                            </ul>
+                          </div>
+                        ) : null}
+                        {operation.requestBody ? (
+                          <div className="api-contract-block">
+                            <b>Sample request body</b>
+                            <pre>
+                              <code>{operation.requestBody}</code>
+                            </pre>
+                          </div>
+                        ) : null}
                         {operation.responses.length > 0 ? (
-                          <ul>
+                          <div className="api-contract-block">
+                            <b>Responses</b>
                             {operation.responses.map((response) => (
-                              <li key={response}>{response}</li>
+                              <div
+                                className="api-response-sample"
+                                key={response.status}
+                              >
+                                <p>
+                                  <code>{response.status}</code> —{' '}
+                                  {response.description}
+                                </p>
+                                {response.sample ? (
+                                  <pre>
+                                    <code>{response.sample}</code>
+                                  </pre>
+                                ) : null}
+                              </div>
                             ))}
-                          </ul>
+                          </div>
                         ) : null}
                       </div>
                     </details>

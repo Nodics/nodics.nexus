@@ -15,10 +15,35 @@ const referenceImages = Object.freeze({
   nodicsFeaturesArchitecture: '/assets/nodics/features-modular-ai-v1.png',
   nodicsAboutCollaboration: '/assets/nodics/about-ai-collaboration-v1.png',
   nodicsAboutArchitecture: '/assets/nodics/about-architecture-workshop-v2.png',
+  nodicsAboutVerticalWorkshop:
+    '/assets/nodics/about/about-vertical-framework-workshop-v1.png',
+  nodicsAboutVerticalJourney:
+    '/assets/nodics/about/about-vertical-adoption-journey-v1.png',
+  nodicsAboutVerticalOperations:
+    '/assets/nodics/about/about-vertical-operations-journey-v2.png',
   nodicsContactArchitecture:
     '/assets/nodics/contact/contact-architecture-v1.png',
   nodicsDeveloperExperience:
-    '/assets/nodics/developers/ai-assisted-engineering-v1.png',
+    '/assets/nodics/developers/developer-contract-workshop-v1.png',
+  nodicsDeveloperContractWorkshop:
+    '/assets/nodics/developers/developer-contract-workshop-v1.png',
+  nodicsProductOperatingModel:
+    '/assets/nodics/products/product-operating-model-v2.png',
+  nexusNewsPublicExperience:
+    '/assets/nodics/editorial/news-public-experience-v1.png',
+  nexusNewsAxisRuntime: '/assets/nodics/editorial/news-axis-runtime-v1.png',
+  nexusNewsEngagementApi:
+    '/assets/nodics/editorial/news-engagement-api-v1.png',
+  nexusNewsEditorialRelease:
+    '/assets/nodics/editorial/news-editorial-release-v1.png',
+  nexusBlogCustomerEngagement:
+    '/assets/nodics/editorial/blog-customer-engagement-v1.png',
+  nexusBlogEditorialPublication:
+    '/assets/nodics/editorial/blog-editorial-publication-v1.png',
+  nexusBlogRuntimeDiscovery:
+    '/assets/nodics/editorial/blog-runtime-discovery-v1.png',
+  nexusBlogAxisOperations:
+    '/assets/nodics/editorial/blog-axis-operations-v1.png',
   nexusTestimonialAarohi:
     '/assets/nodics/testimonials/aarohi-mehta-illustrative.png',
   nexusTestimonialMarcus:

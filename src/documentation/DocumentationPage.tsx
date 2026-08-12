@@ -256,9 +256,24 @@ function DocsLanding({ config }: { readonly config: NexusRuntimeConfig }) {
       topics: [],
     },
   ] as const;
-  const [activeArea, setActiveArea] =
-    useState<(typeof areas)[number]['id']>('framework');
+  type DocsAreaId = (typeof areas)[number]['id'];
+  const initialArea = (): DocsAreaId => {
+    if (window.location.pathname === '/docs/api') return 'api';
+    const tab = new URLSearchParams(window.location.search).get('tab');
+    return areas.some((area) => area.id === tab)
+      ? (tab as DocsAreaId)
+      : 'framework';
+  };
+  const [activeArea, setActiveArea] = useState<DocsAreaId>(initialArea);
   const selected = areas.find((area) => area.id === activeArea) ?? areas[0];
+  const selectArea = (area: (typeof areas)[number]) => {
+    setActiveArea(area.id);
+    const url = new URL(window.location.href);
+    url.pathname = '/docs';
+    if (area.id === 'framework') url.searchParams.delete('tab');
+    else url.searchParams.set('tab', area.id);
+    window.history.replaceState({}, '', url);
+  };
   return (
     <div className="docs-landing">
       <section className="docs-landing-hero">
@@ -296,7 +311,7 @@ function DocsLanding({ config }: { readonly config: NexusRuntimeConfig }) {
               key={area.id}
               role="tab"
               type="button"
-              onClick={() => setActiveArea(area.id)}
+              onClick={() => selectArea(area)}
             >
               <span>0{index + 1}</span>
               {area.label}
@@ -370,7 +385,8 @@ export function DocumentationPage({
       });
     return () => controller.abort();
   }, [config, path, source]);
-  if (path === '/docs') return <DocsLanding config={config} />;
+  if (path === '/docs' || path === '/docs/api')
+    return <DocsLanding config={config} />;
   if (!source)
     return (
       <section className="page-state">

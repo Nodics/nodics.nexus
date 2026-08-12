@@ -8,6 +8,8 @@ export interface NexusEditorialArticle {
   readonly summary?: string;
   readonly body?: string;
   readonly href?: string;
+  readonly imageAlt?: string;
+  readonly referenceImageCode?: string;
 }
 
 function bodyText(value: unknown): string | undefined {
@@ -41,6 +43,11 @@ function article(value: unknown): NexusEditorialArticle | undefined {
         ? input.contentTypeCode
         : undefined,
     href: slug ? `/articles/${slug}` : undefined,
+    imageAlt: typeof input.imageAlt === 'string' ? input.imageAlt : undefined,
+    referenceImageCode:
+      typeof input.referenceImageCode === 'string'
+        ? input.referenceImageCode
+        : undefined,
     slug,
     summary: typeof input.summary === 'string' ? input.summary : undefined,
     title: typeof input.title === 'string' ? input.title : undefined,

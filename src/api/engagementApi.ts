@@ -4,6 +4,8 @@ export interface NexusTestimonial {
   readonly quote: string;
   readonly name: string;
   readonly role: string;
+  readonly avatarReferenceImageCode?: string;
+  readonly avatarAlt?: string;
 }
 
 export interface NexusContactFormField {
@@ -26,6 +28,12 @@ export interface NexusContactSubmission {
   readonly verificationRequired?: boolean;
 }
 
+export interface NexusTestimonialSubmission {
+  readonly referenceCode: string;
+  readonly status?: string;
+  readonly verificationRequired?: boolean;
+}
+
 function text(value: unknown, fallback = ''): string {
   return typeof value === 'string' ? value : fallback;
 }
@@ -40,14 +48,32 @@ function testimonial(value: unknown): NexusTestimonial | undefined {
       : {};
   const quote = text(input.publicText);
   if (!quote) return undefined;
+  const name = text(attribution.name, 'Nodics customer');
+  const avatarReferenceImageCode =
+    text(input.avatarReferenceImageCode) ||
+    text(attribution.avatarReferenceImageCode) ||
+    testimonialAvatarCode(name);
   return {
-    name: text(attribution.name, 'Nodics customer'),
+    avatarAlt:
+      text(input.avatarAlt) ||
+      text(attribution.avatarAlt) ||
+      (avatarReferenceImageCode ? `Illustrative portrait of ${name}` : ''),
+    avatarReferenceImageCode,
+    name,
     quote,
     role: text(
       attribution.role,
       text(attribution.organization, 'Verified voice'),
     ),
   };
+}
+
+function testimonialAvatarCode(name: string): string {
+  const normalized = name.trim().toLowerCase();
+  if (normalized === 'aarohi mehta') return 'nexusTestimonialAarohi';
+  if (normalized === 'marcus reed') return 'nexusTestimonialMarcus';
+  if (normalized === 'daniel kim') return 'nexusTestimonialDaniel';
+  return '';
 }
 
 function fieldsFromStructure(
@@ -135,5 +161,20 @@ export async function submitContact(
     headers: { 'idempotency-key': input.idempotencyKey },
     method: 'POST',
     path: 'v0/public/contact-submissions',
+  });
+}
+
+export async function submitTestimonialCandidate(
+  input: NodicsClientInput & {
+    readonly idempotencyKey: string;
+    readonly payload: Record<string, string>;
+  },
+): Promise<NexusTestimonialSubmission> {
+  return requestNodicsJson<NexusTestimonialSubmission>({
+    ...input,
+    body: input.payload,
+    headers: { 'idempotency-key': input.idempotencyKey },
+    method: 'POST',
+    path: 'v0/public/testimonial-candidates',
   });
 }
