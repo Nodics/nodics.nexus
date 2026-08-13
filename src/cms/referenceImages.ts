@@ -32,8 +32,7 @@ const referenceImages = Object.freeze({
   nexusNewsPublicExperience:
     '/assets/nodics/editorial/news-public-experience-v1.png',
   nexusNewsAxisRuntime: '/assets/nodics/editorial/news-axis-runtime-v1.png',
-  nexusNewsEngagementApi:
-    '/assets/nodics/editorial/news-engagement-api-v1.png',
+  nexusNewsEngagementApi: '/assets/nodics/editorial/news-engagement-api-v1.png',
   nexusNewsEditorialRelease:
     '/assets/nodics/editorial/news-editorial-release-v1.png',
   nexusBlogCustomerEngagement:

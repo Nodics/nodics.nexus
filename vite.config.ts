@@ -8,6 +8,15 @@ import {
 } from './src/runtime/runtimeConfig';
 
 const path = '/nexus-config.json';
+const LOCAL_SECURITY_HEADERS = {
+  'Cache-Control': 'no-store',
+  'Content-Security-Policy':
+    "default-src 'self'; connect-src 'self' http://localhost:* http://127.0.0.1:*; img-src 'self' data: http://localhost:* http://127.0.0.1:*; script-src 'self'; style-src 'self' 'unsafe-inline'; frame-ancestors 'none'; base-uri 'none'; object-src 'none'",
+  'Cross-Origin-Resource-Policy': 'same-origin',
+  'Referrer-Policy': 'no-referrer',
+  'X-Content-Type-Options': 'nosniff',
+  'X-Frame-Options': 'DENY',
+} as const;
 const required = (env: Record<string, string>, name: string) => {
   const value = env[name]?.trim();
   if (!value) throw new Error(`${name} must be configured`);
@@ -74,8 +83,8 @@ export default defineConfig(({ mode }) => {
   const strictPort = bool(env, 'NEXUS_STRICT_PORT');
   return {
     plugins: [react(), runtimePlugin(config)],
-    server: { host, port, strictPort },
-    preview: { host, port, strictPort },
+    server: { host, port, strictPort, headers: LOCAL_SECURITY_HEADERS },
+    preview: { host, port, strictPort, headers: LOCAL_SECURITY_HEADERS },
     build: { sourcemap: bool(env, 'NEXUS_BUILD_SOURCEMAP') },
     test: {
       environment: 'jsdom',

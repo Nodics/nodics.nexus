@@ -52,11 +52,14 @@ function mergeLiveArticle(
     href: listingHref(liveArticle) || text(staticArticle, 'href'),
     imageAlt: liveArticle.imageAlt || text(staticArticle, 'imageAlt'),
     referenceImageCode:
-      liveArticle.referenceImageCode || text(staticArticle, 'referenceImageCode'),
+      liveArticle.referenceImageCode ||
+      text(staticArticle, 'referenceImageCode'),
     special: liveArticle.special === true,
     specialFrom: liveArticle.specialFrom || undefined,
-    specialLabel: liveArticle.specialLabel || text(staticArticle, 'specialLabel'),
-    specialRank: liveArticle.specialRank ?? numberValue(staticArticle, 'specialRank'),
+    specialLabel:
+      liveArticle.specialLabel || text(staticArticle, 'specialLabel'),
+    specialRank:
+      liveArticle.specialRank ?? numberValue(staticArticle, 'specialRank'),
     specialUntil: liveArticle.specialUntil || undefined,
     specialVariant:
       liveArticle.specialVariant || text(staticArticle, 'specialVariant'),
@@ -79,7 +82,8 @@ function mergeLiveDetail(
     href: text(staticArticle, 'href') || listingHref(liveArticle),
     imageAlt: liveArticle.imageAlt || text(staticArticle, 'imageAlt'),
     referenceImageCode:
-      liveArticle.referenceImageCode || text(staticArticle, 'referenceImageCode'),
+      liveArticle.referenceImageCode ||
+      text(staticArticle, 'referenceImageCode'),
     summary: liveArticle.summary || text(staticArticle, 'summary'),
     takeaways: liveArticle.takeaways?.length
       ? liveArticle.takeaways
@@ -168,7 +172,10 @@ const ArticleCard = ({
   readonly viewMode?: ViewMode;
 }) => {
   const href = safeHref(text(article, 'href') || text(article, 'slug'));
-  const source = mediaImageSource(text(article, 'referenceImageCode'), cmsBaseUrl);
+  const source = mediaImageSource(
+    text(article, 'referenceImageCode'),
+    cmsBaseUrl,
+  );
   const tags = articleTags(article).slice(0, 4);
   const label = text(article, 'contentTypeCode', 'Article');
   return (
@@ -262,12 +269,12 @@ const Listing = ({
   const cmsBaseUrl = runtime?.config.endpoints.cms;
   const liveListingAvailable = Boolean(
     runtime?.config.endpoints.editorial &&
-      runtime.mapping.siteCode &&
-      runtime.config.defaultLocale &&
-      runtime.config.channel &&
-      runtime.config.enterpriseCode &&
-      runtime.config.requestTimeoutMs &&
-      contentTypeCode,
+    runtime.mapping.siteCode &&
+    runtime.config.defaultLocale &&
+    runtime.config.channel &&
+    runtime.config.enterpriseCode &&
+    runtime.config.requestTimeoutMs &&
+    contentTypeCode,
   );
   useEffect(() => {
     const editorialBaseUrl = runtime?.config.endpoints.editorial;
@@ -292,7 +299,9 @@ const Listing = ({
       .then((articles) => {
         if (!controller.signal.aborted) {
           setLiveArticles(
-            articles.map((article) => mergeLiveArticle(article, staticArticles)),
+            articles.map((article) =>
+              mergeLiveArticle(article, staticArticles),
+            ),
           );
           setLiveStatus('ready');
         }
@@ -318,9 +327,7 @@ const Listing = ({
     () =>
       Array.from(
         new Set(
-          articles
-            .map((article) => text(article, 'category'))
-            .filter(Boolean),
+          articles.map((article) => text(article, 'category')).filter(Boolean),
         ),
       ).sort((first, second) => first.localeCompare(second)),
     [articles],
@@ -375,11 +382,7 @@ const Listing = ({
             <input
               value={query}
               onChange={(event) => setQuery(event.target.value)}
-              placeholder={text(
-                p,
-                'searchPlaceholder',
-                'Search articles',
-              )}
+              placeholder={text(p, 'searchPlaceholder', 'Search articles')}
               type="search"
             />
           </label>
@@ -428,7 +431,8 @@ const Listing = ({
 
         <div className="editorial-index-summary">
           <span>
-            {visibleArticles.length} {visibleArticles.length === 1 ? 'item' : 'items'}
+            {visibleArticles.length}{' '}
+            {visibleArticles.length === 1 ? 'item' : 'items'}
           </span>
           <span>{text(p, 'contentTypeCode', 'EDITORIAL')}</span>
         </div>
@@ -445,7 +449,9 @@ const Listing = ({
           </div>
         ) : (
           <div className="editorial-empty-state">
-            <p>{text(p, 'emptyMessage', 'No articles matched your filters.')}</p>
+            <p>
+              {text(p, 'emptyMessage', 'No articles matched your filters.')}
+            </p>
           </div>
         )}
 
@@ -516,12 +522,12 @@ export function EditorialDetailRenderer({ component }: Props) {
     .filter(Boolean);
   const liveDetailAvailable = Boolean(
     runtime?.config.endpoints.editorial &&
-      runtime.mapping.siteCode &&
-      runtime.config.defaultLocale &&
-      runtime.config.channel &&
-      runtime.config.enterpriseCode &&
-      runtime.config.requestTimeoutMs &&
-      window.location.pathname.split('/').filter(Boolean).at(-1),
+    runtime.mapping.siteCode &&
+    runtime.config.defaultLocale &&
+    runtime.config.channel &&
+    runtime.config.enterpriseCode &&
+    runtime.config.requestTimeoutMs &&
+    window.location.pathname.split('/').filter(Boolean).at(-1),
   );
   useEffect(() => {
     const editorialBaseUrl = runtime?.config.endpoints.editorial;

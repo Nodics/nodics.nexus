@@ -56,11 +56,12 @@ describe('Nexus runtime configuration', () => {
             contractVersion: 1,
             clientContractVersion: 1,
             endpoints: {
-              cms: 'http://localhost:4310/nodics/cms',
+              cms: 'http://localhost:4314/nodics/cms',
               engagement: 'http://localhost:4340/nodics/engagement',
-              editorial: 'http://localhost:4310/nodics/editorial',
+              editorial: 'http://localhost:4314/nodics/editorial',
               profile: 'http://localhost:4300/nodics/profile',
             },
+            endpointRoles: { cms: 'ONLINE', editorial: 'ONLINE' },
             uiComposition: {},
           },
         }),
@@ -71,10 +72,32 @@ describe('Nexus runtime configuration', () => {
       loadNexusRuntimeConfig(undefined, fetchMock as typeof fetch),
     ).resolves.toMatchObject({
       endpoints: {
-        cms: 'http://localhost:4310/nodics/cms',
+        cms: 'http://localhost:4314/nodics/cms',
         engagement: 'http://localhost:4340/nodics/engagement',
-        editorial: 'http://localhost:4310/nodics/editorial',
+        editorial: 'http://localhost:4314/nodics/editorial',
       },
     });
+  });
+  it('rejects a Staged CMS endpoint even when Platform supplies a valid URL', async () => {
+    const fetchMock = async (inputUrl: RequestInfo | URL) => {
+      if (String(inputUrl) === '/nexus-config.json') {
+        return new Response(JSON.stringify(input), { status: 200 });
+      }
+      return new Response(
+        JSON.stringify({
+          data: {
+            contractVersion: 1,
+            clientContractVersion: 1,
+            endpoints: { cms: 'http://localhost:4312/nodics/cms' },
+            endpointRoles: { cms: 'STAGED' },
+            uiComposition: {},
+          },
+        }),
+        { status: 200 },
+      );
+    };
+    await expect(
+      loadNexusRuntimeConfig(undefined, fetchMock as typeof fetch),
+    ).rejects.toThrow(/not Online/u);
   });
 });

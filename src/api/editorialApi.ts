@@ -52,34 +52,47 @@ function article(value: unknown): NexusEditorialArticle | undefined {
     return undefined;
   const input = value as Record<string, unknown>;
   const slug = stringValue(input, 'slug');
+  const optional = <K extends keyof NexusEditorialArticle>(
+    key: K,
+    candidate: NexusEditorialArticle[K] | undefined,
+  ): Partial<NexusEditorialArticle> =>
+    candidate === undefined ? {} : { [key]: candidate };
   return {
-    articleCode: stringValue(input, 'articleCode'),
-    body: bodyText(input.body),
-    contentTypeCode: stringValue(input, 'contentTypeCode'),
-    href: slug ? `/articles/${slug}` : undefined,
-    imageAlt: stringValue(input, 'imageAlt'),
-    referenceImageCode: stringValue(
-      input,
+    ...optional('articleCode', stringValue(input, 'articleCode')),
+    ...optional('body', bodyText(input.body)),
+    ...optional('contentTypeCode', stringValue(input, 'contentTypeCode')),
+    ...optional('href', slug ? `/articles/${slug}` : undefined),
+    ...optional('imageAlt', stringValue(input, 'imageAlt')),
+    ...optional(
       'referenceImageCode',
-      'featuredMediaCode',
+      stringValue(input, 'referenceImageCode', 'featuredMediaCode'),
     ),
-    special: input.special === true,
-    specialFrom: stringValue(input, 'specialFrom'),
-    specialLabel: stringValue(input, 'specialLabel'),
-    specialRank:
-      typeof input.specialRank === 'number' && Number.isFinite(input.specialRank)
+    ...optional(
+      'special',
+      typeof input.special === 'boolean' ? input.special : undefined,
+    ),
+    ...optional('specialFrom', stringValue(input, 'specialFrom')),
+    ...optional('specialLabel', stringValue(input, 'specialLabel')),
+    ...optional(
+      'specialRank',
+      typeof input.specialRank === 'number' &&
+        Number.isFinite(input.specialRank)
         ? input.specialRank
         : undefined,
-    specialUntil: stringValue(input, 'specialUntil'),
-    specialVariant: stringValue(input, 'specialVariant'),
-    slug,
-    summary: stringValue(input, 'summary'),
-    takeaways: Array.isArray(input.takeaways)
-      ? input.takeaways.filter(
-          (item): item is string => typeof item === 'string' && Boolean(item),
-        )
-      : undefined,
-    title: stringValue(input, 'title'),
+    ),
+    ...optional('specialUntil', stringValue(input, 'specialUntil')),
+    ...optional('specialVariant', stringValue(input, 'specialVariant')),
+    ...optional('slug', slug),
+    ...optional('summary', stringValue(input, 'summary')),
+    ...optional(
+      'takeaways',
+      Array.isArray(input.takeaways)
+        ? input.takeaways.filter(
+            (item): item is string => typeof item === 'string' && Boolean(item),
+          )
+        : undefined,
+    ),
+    ...optional('title', stringValue(input, 'title')),
   };
 }
 

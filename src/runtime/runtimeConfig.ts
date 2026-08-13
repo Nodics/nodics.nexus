@@ -133,6 +133,10 @@ function parsePublicBootstrapEndpoints(
   )
     throw new Error('Nexus public bootstrap contract is incompatible');
   const endpoints = record(data.endpoints);
+  const endpointRoles = record(data.endpointRoles);
+  if (endpointRoles.cms !== 'ONLINE') {
+    throw new Error('Nexus public bootstrap CMS endpoint is not Online');
+  }
   return Object.freeze({
     cms:
       safeEndpoint(endpoints.cms, 'cms') ||

@@ -1323,7 +1323,10 @@ function EditorialCarousel({
 
   const source =
     entry && typeof entry.referenceImageCode === 'string'
-      ? mediaImageSource(entry.referenceImageCode, runtime?.config.endpoints.cms)
+      ? mediaImageSource(
+          entry.referenceImageCode,
+          runtime?.config.endpoints.cms,
+        )
       : undefined;
   const href =
     entry && typeof entry.href === 'string' ? safeHref(entry.href) : undefined;
@@ -1339,7 +1342,10 @@ function EditorialCarousel({
       transform: `translate3d(-${active * publicationStepPx}px, 0, 0)`,
     } as CSSProperties;
     return (
-      <section className={`editorial-carousel ${variant}-carousel`} id={variant}>
+      <section
+        className={`editorial-carousel ${variant}-carousel`}
+        id={variant}
+      >
         <div
           className="section-wrap blog-publications-wrap"
           onMouseEnter={() => setAutoPaused(true)}
@@ -1362,9 +1368,7 @@ function EditorialCarousel({
                   ←
                 </button>
               ) : null}
-              <div
-                className="blog-publications-viewport"
-              >
+              <div className="blog-publications-viewport">
                 <div
                   className={`blog-publication-grid${publicationResetting ? ' is-resetting' : ''}`}
                   ref={publicationGridRef}
@@ -1372,78 +1376,83 @@ function EditorialCarousel({
                 >
                   {publicationEntries.map((blog, index) => {
                     const isClone = index >= entries.length;
-                  const blogHref =
-                    typeof blog.href === 'string'
-                      ? safeHref(blog.href)
-                      : undefined;
-                  const blogSource =
-                    typeof blog.referenceImageCode === 'string'
-                      ? mediaImageSource(
-                          blog.referenceImageCode,
-                          runtime?.config.endpoints.cms,
-                        )
-                      : undefined;
-                  const title =
-                    typeof blog.title === 'string' ? blog.title : '';
-                  return (
-                    <article
-                      aria-hidden={isClone ? true : undefined}
-                      className="blog-publication-card"
-                      data-publication-index={index}
-                      key={`${title}-${index}`}
-                    >
-                      <div className="blog-publication-image">
-                        {blogHref ? (
-                          <a
-                            href={blogHref}
-                            aria-label={`Open ${title || 'blog detail'}`}
-                          >
-                            {blogSource ? (
-                              <img
-                                src={blogSource}
-                                alt={
-                                  typeof blog.imageAlt === 'string'
-                                    ? blog.imageAlt
-                                    : ''
-                                }
-                                loading="lazy"
-                              />
-                            ) : null}
-                          </a>
-                        ) : blogSource ? (
-                          <img
-                            src={blogSource}
-                            alt={
-                              typeof blog.imageAlt === 'string'
-                                ? blog.imageAlt
-                                : ''
-                            }
-                            loading="lazy"
-                          />
-                        ) : null}
-                      </div>
-                      <div className="blog-publication-copy">
-                        <small>
-                          {typeof blog.label === 'string'
-                            ? blog.label
-                            : fallbackLabel}
-                        </small>
-                        <h3>
-                          {blogHref ? <a href={blogHref}>{title}</a> : title}
-                        </h3>
-                        <p>
-                          {typeof blog.summary === 'string' ? blog.summary : ''}
-                        </p>
-                        {blogHref ? (
-                          <a href={blogHref} className="blog-publication-read">
-                            {typeof blog.linkLabel === 'string'
-                              ? blog.linkLabel
-                              : 'Read more'}
-                          </a>
-                        ) : null}
-                      </div>
-                    </article>
-                  );
+                    const blogHref =
+                      typeof blog.href === 'string'
+                        ? safeHref(blog.href)
+                        : undefined;
+                    const blogSource =
+                      typeof blog.referenceImageCode === 'string'
+                        ? mediaImageSource(
+                            blog.referenceImageCode,
+                            runtime?.config.endpoints.cms,
+                          )
+                        : undefined;
+                    const title =
+                      typeof blog.title === 'string' ? blog.title : '';
+                    return (
+                      <article
+                        aria-hidden={isClone ? true : undefined}
+                        className="blog-publication-card"
+                        data-publication-index={index}
+                        key={`${title}-${index}`}
+                      >
+                        <div className="blog-publication-image">
+                          {blogHref ? (
+                            <a
+                              href={blogHref}
+                              aria-label={`Open ${title || 'blog detail'}`}
+                            >
+                              {blogSource ? (
+                                <img
+                                  src={blogSource}
+                                  alt={
+                                    typeof blog.imageAlt === 'string'
+                                      ? blog.imageAlt
+                                      : ''
+                                  }
+                                  loading="lazy"
+                                />
+                              ) : null}
+                            </a>
+                          ) : blogSource ? (
+                            <img
+                              src={blogSource}
+                              alt={
+                                typeof blog.imageAlt === 'string'
+                                  ? blog.imageAlt
+                                  : ''
+                              }
+                              loading="lazy"
+                            />
+                          ) : null}
+                        </div>
+                        <div className="blog-publication-copy">
+                          <small>
+                            {typeof blog.label === 'string'
+                              ? blog.label
+                              : fallbackLabel}
+                          </small>
+                          <h3>
+                            {blogHref ? <a href={blogHref}>{title}</a> : title}
+                          </h3>
+                          <p>
+                            {typeof blog.summary === 'string'
+                              ? blog.summary
+                              : ''}
+                          </p>
+                          {blogHref ? (
+                            <a
+                              href={blogHref}
+                              className="blog-publication-read"
+                            >
+                              {typeof blog.linkLabel === 'string'
+                                ? blog.linkLabel
+                                : 'Read more'}
+                            </a>
+                          ) : null}
+                        </div>
+                      </article>
+                    );
                   })}
                 </div>
               </div>
@@ -1575,8 +1584,7 @@ export function ContactRenderer({ component }: Props) {
           ...component.properties,
           kicker: 'Start with clarity',
           heading: 'Tell us where your enterprise journey needs to move next.',
-          body:
-            'Whether you are evaluating Nodics, planning a customer implementation, or exploring a delivery partnership, start with the outcome you want to create. We will route the conversation to the right next step.',
+          body: 'Whether you are evaluating Nodics, planning a customer implementation, or exploring a delivery partnership, start with the outcome you want to create. We will route the conversation to the right next step.',
           items: [
             {
               title: 'Evaluate the framework',
@@ -1770,11 +1778,7 @@ export function ContactRenderer({ component }: Props) {
   const handleTestimonialSubmit = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     const engagementEndpoint = runtime?.config.endpoints.engagement;
-    if (
-      !runtime ||
-      !engagementEndpoint ||
-      testimonialStatus === 'submitting'
-    ) {
+    if (!runtime || !engagementEndpoint || testimonialStatus === 'submitting') {
       setTestimonialStatus('failed');
       setTestimonialMessage(
         'Testimonial submission is not available right now. Please try again shortly.',
@@ -1966,9 +1970,7 @@ export function ContactRenderer({ component }: Props) {
                 <div className="contact-form-action testimonial-action">
                   <button
                     type="submit"
-                    disabled={
-                      !runtime || testimonialStatus === 'submitting'
-                    }
+                    disabled={!runtime || testimonialStatus === 'submitting'}
                   >
                     {text(p, 'testimonialLinkLabel', 'Share testimonial')}
                   </button>

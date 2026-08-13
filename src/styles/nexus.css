@@ -3223,9 +3223,9 @@ a {
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto;
   grid-template-areas:
-    "meta meta"
-    "title link"
-    "body link";
+    'meta meta'
+    'title link'
+    'body link';
   column-gap: clamp(1rem, 2vw, 1.75rem);
   row-gap: 0.7rem;
   align-items: center;
@@ -3469,8 +3469,7 @@ a {
     radial-gradient(circle at 8% 14%, rgb(245 196 0 / 15%), transparent 23rem),
     radial-gradient(circle at 92% 70%, rgb(245 196 0 / 8%), transparent 30rem),
     linear-gradient(90deg, rgb(36 38 41 / 4%) 1px, transparent 1px),
-    linear-gradient(rgb(36 38 41 / 4%) 1px, transparent 1px),
-    #f8f7f2;
+    linear-gradient(rgb(36 38 41 / 4%) 1px, transparent 1px), #f8f7f2;
   background-size:
     auto,
     auto,
@@ -3521,8 +3520,7 @@ a {
     radial-gradient(circle at 12% 18%, rgb(245 196 0 / 14%), transparent 24rem),
     radial-gradient(circle at 90% 78%, rgb(245 196 0 / 10%), transparent 27rem),
     linear-gradient(90deg, rgb(255 255 255 / 5%) 1px, transparent 1px),
-    linear-gradient(rgb(255 255 255 / 5%) 1px, transparent 1px),
-    #111619;
+    linear-gradient(rgb(255 255 255 / 5%) 1px, transparent 1px), #111619;
   background-size:
     auto,
     auto,
@@ -3766,7 +3764,11 @@ a {
   min-height: 270px;
   border-right: 1px solid rgb(36 38 41 / 10%);
   background:
-    radial-gradient(circle at 50% 4.25rem, rgb(245 196 0 / 24%) 0 0.42rem, transparent 0.48rem),
+    radial-gradient(
+      circle at 50% 4.25rem,
+      rgb(245 196 0 / 24%) 0 0.42rem,
+      transparent 0.48rem
+    ),
     rgb(255 255 255 / 91%);
 }
 .ecosystem-journey-grid .feature-page-card:last-child {
