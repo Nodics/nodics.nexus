@@ -1,6 +1,15 @@
 node_modules/
 dist/
 .env
+.env.local
 *.tsbuildinfo
 coverage/
+.cache/
+.vite/
+.turbo/
+.next/
+*.log
 .DS_Store
+
+# Generated process outputs.
+**/generated/
