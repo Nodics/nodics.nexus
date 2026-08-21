@@ -108,4 +108,48 @@ describe('Nexus CMS page', () => {
     expect(container.querySelector('.secondary-page-hero')).toBeInTheDocument();
     expect(container.querySelector('.page-title')).not.toBeInTheDocument();
   });
+
+  it('shows an actionable publishing state when the home page has no delivered components', async () => {
+    vi.spyOn(globalThis, 'fetch').mockResolvedValueOnce(
+      new Response(
+        JSON.stringify({
+          result: {
+            contractVersion: 1,
+            site: 'nexusCorporateSite',
+            path: '/',
+            locale: 'en',
+            channel: 'web',
+            page: {
+              code: 'nexusHomePage',
+              name: 'Nodics Nexus',
+              renderer: 'nexus.page.home',
+              rendererContractVersion: 1,
+              rendererChannels: ['web'],
+              rendererDeprecated: false,
+              templateContract: {
+                code: 'nexusCorporatePageTemplate',
+                renderer: 'nexus.template.corporate',
+                contractVersion: 1,
+              },
+              components: [],
+            },
+          },
+        }),
+        { status: 200 },
+      ),
+    );
+
+    render(<CmsPage config={config} mapping={mapping} path="/" />);
+
+    expect(
+      await screen.findByRole('heading', {
+        name: 'Published home content is missing.',
+      }),
+    ).toBeInTheDocument();
+    expect(screen.getByText(/Review Axis Publishing Requests/i)).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'Open Axis' })).toHaveAttribute(
+      'href',
+      'http://localhost:3100',
+    );
+  });
 });

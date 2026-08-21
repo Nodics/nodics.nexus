@@ -1200,11 +1200,10 @@ function EditorialCarousel({
     Boolean(localeCode) &&
     Boolean(requestTimeoutMs) &&
     Boolean(siteCode);
-  const entries = hasLiveEditorial
-    ? liveStatus === 'ready'
+  const entries =
+    hasLiveEditorial && liveStatus === 'ready' && liveEntries.length
       ? liveEntries
-      : []
-    : staticEntries;
+      : staticEntries;
   const safeActive = entries.length ? Math.min(active, entries.length - 1) : 0;
   const entry = entries[safeActive];
   const move = (direction: number) => {

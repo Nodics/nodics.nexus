@@ -1,7 +1,12 @@
-import { render, screen } from '@testing-library/react';
-import { describe, expect, it } from 'vitest';
+import { render, screen, waitFor } from '@testing-library/react';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import { CmsComponentRenderer } from '../src/cms/RendererRegistry';
 import type { CmsComponentContract } from '../src/cms/cmsContract';
+import { NexusRuntimeConfigContext } from '../src/runtime/NexusRuntimeConfigContext';
+import type {
+  NexusHostMapping,
+  NexusRuntimeConfig,
+} from '../src/runtime/runtimeConfig';
 
 const component = (
   renderer: string,
@@ -19,6 +24,32 @@ const component = (
   index: 0,
   components: [],
 });
+
+const runtimeConfig: NexusRuntimeConfig = {
+  axisBaseUrl: 'http://localhost:3100',
+  platformBaseUrl: 'http://localhost:4300',
+  endpoints: {
+    cms: 'http://localhost:4314/nodics/cms',
+    editorial: 'http://localhost:4314/nodics/editorial',
+  },
+  enterpriseCode: 'default',
+  defaultLocale: 'en',
+  channel: 'web',
+  clientContractVersion: 1,
+  requestTimeoutMs: 5000,
+  hostMappings: [],
+};
+
+const runtimeMapping: NexusHostMapping = {
+  hosts: ['localhost'],
+  siteCode: 'nexusCorporateSite',
+  experience: 'corporate',
+};
+
+afterEach(() => {
+  vi.restoreAllMocks();
+});
+
 describe('Editorial renderers', () => {
   it('renders a bounded accessible article listing', () => {
     render(
@@ -96,6 +127,54 @@ describe('Editorial renderers', () => {
     expect(
       screen.getByRole('link', { name: 'View all insights' }),
     ).toHaveAttribute('href', '/blogs');
+  });
+
+  it('keeps CMS-authored home editorial items when live editorial returns no articles', async () => {
+    vi.spyOn(globalThis, 'fetch').mockResolvedValueOnce(
+      new Response(
+        JSON.stringify({
+          result: { items: [], limit: 4 },
+          responseCode: '200',
+        }),
+        { status: 200 },
+      ),
+    );
+
+    render(
+      <NexusRuntimeConfigContext.Provider
+        value={{ config: runtimeConfig, mapping: runtimeMapping }}
+      >
+        <CmsComponentRenderer
+          channel="web"
+          component={component('nexus.component.news-carousel', {
+            kicker: 'News',
+            heading: 'Latest news',
+            href: '/news',
+            linkLabel: 'View all news',
+            items: [
+              {
+                label: 'News',
+                title: 'Backend-owned fallback news',
+                summary: 'A safe fallback summary.',
+                href: '/news/backend-owned-fallback-news',
+                linkLabel: 'Read news',
+              },
+            ],
+          })}
+        />
+      </NexusRuntimeConfigContext.Provider>,
+    );
+
+    expect(
+      screen.getByRole('heading', { name: 'Latest news' }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole('link', { name: 'Backend-owned fallback news' }),
+    ).toHaveAttribute('href', '/news/backend-owned-fallback-news');
+    await waitFor(() => expect(globalThis.fetch).toHaveBeenCalledTimes(1));
+    expect(
+      screen.getByRole('link', { name: 'Backend-owned fallback news' }),
+    ).toBeInTheDocument();
   });
 
   it('renders long home testimonial quotes without truncating the configured text', () => {

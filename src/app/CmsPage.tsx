@@ -165,6 +165,38 @@ export function CmsPage({
         <h1>Incompatible page contract</h1>
       </section>
     );
+  if (page.renderer === 'nexus.page.home' && page.components.length === 0) {
+    return (
+      <section className="page-state page-state-service" role="alert">
+        <div className="service-state-panel">
+          <p className="eyebrow">Nodics Nexus</p>
+          <h1>Published home content is missing.</h1>
+          <p>
+            Nexus reached WCMS Online, but the published home page did not include
+            any visible components. Review Axis Publishing Requests, approval tasks,
+            and Staged-to-Online Status, then publish the Nexus website content.
+          </p>
+          <p className="service-state-detail">
+            Site: {mapping.siteCode} · Path: {path} · Channel: {config.channel}
+          </p>
+          <div className="service-state-actions">
+            <button
+              className="button button-primary"
+              onClick={() => {
+                setState({ status: 'loading' });
+                setAttempt((value) => value + 1);
+              }}
+            >
+              Try again
+            </button>
+            <a className="button button-secondary" href={config.axisBaseUrl}>
+              Open Axis
+            </a>
+          </div>
+        </div>
+      </section>
+    );
+  }
   return (
     <NexusRuntimeConfigContext.Provider value={{ config, mapping }}>
       <div

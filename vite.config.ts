@@ -17,6 +17,13 @@ const LOCAL_SECURITY_HEADERS = {
   'X-Content-Type-Options': 'nosniff',
   'X-Frame-Options': 'DENY',
 } as const;
+const LOCAL_DEVELOPMENT_SECURITY_HEADERS = {
+  ...LOCAL_SECURITY_HEADERS,
+  'Content-Security-Policy': LOCAL_SECURITY_HEADERS['Content-Security-Policy'].replace(
+    "script-src 'self'",
+    "script-src 'self' 'unsafe-inline'",
+  ),
+} as const;
 const required = (env: Record<string, string>, name: string) => {
   const value = env[name]?.trim();
   if (!value) throw new Error(`${name} must be configured`);
@@ -83,7 +90,14 @@ export default defineConfig(({ mode }) => {
   const strictPort = bool(env, 'NEXUS_STRICT_PORT');
   return {
     plugins: [react(), runtimePlugin(config)],
-    server: { host, port, strictPort, headers: LOCAL_SECURITY_HEADERS },
+    server: {
+      host,
+      port,
+      strictPort,
+      // Vite injects the React-refresh preamble as an inline development script.
+      // Preview and built deployments retain the strict script policy below.
+      headers: LOCAL_DEVELOPMENT_SECURITY_HEADERS,
+    },
     preview: { host, port, strictPort, headers: LOCAL_SECURITY_HEADERS },
     build: { sourcemap: bool(env, 'NEXUS_BUILD_SOURCEMAP') },
     test: {
