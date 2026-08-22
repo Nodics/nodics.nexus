@@ -35,6 +35,12 @@ const positive = (env: Record<string, string>, name: string) => {
     throw new Error(`${name} must be a positive integer`);
   return value;
 };
+const nonNegative = (env: Record<string, string>, name: string) => {
+  const value = Number(required(env, name));
+  if (!Number.isInteger(value) || value < 0)
+    throw new Error(`${name} must be a non-negative integer`);
+  return value;
+};
 const bool = (env: Record<string, string>, name: string) => {
   const value = required(env, name).toLowerCase();
   if (!['true', 'false'].includes(value))
@@ -50,7 +56,7 @@ export function buildRuntimeConfig(
     enterpriseCode: required(env, 'NEXUS_ENTERPRISE_CODE'),
     defaultLocale: required(env, 'NEXUS_DEFAULT_LOCALE'),
     channel: required(env, 'NEXUS_CHANNEL'),
-    clientContractVersion: positive(env, 'NEXUS_CLIENT_CONTRACT_VERSION'),
+    clientContractVersion: nonNegative(env, 'NEXUS_CLIENT_CONTRACT_VERSION'),
     requestTimeoutMs: positive(env, 'NEXUS_REQUEST_TIMEOUT_MS'),
     hostMappings: [
       {

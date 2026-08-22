@@ -43,6 +43,12 @@ function positiveInteger(value: unknown, field: string): number {
   return Number(value);
 }
 
+function nonNegativeInteger(value: unknown, field: string): number {
+  if (!Number.isInteger(value) || Number(value) < 0)
+    throw new Error(`Invalid Nexus runtime configuration: ${field}`);
+  return Number(value);
+}
+
 export function parseNexusRuntimeConfig(value: unknown): NexusRuntimeConfig {
   const candidate = record(value);
   const parsedAxisUrl = new URL(
@@ -101,7 +107,7 @@ export function parseNexusRuntimeConfig(value: unknown): NexusRuntimeConfig {
     enterpriseCode: requiredString(candidate.enterpriseCode, 'enterpriseCode'),
     defaultLocale: requiredString(candidate.defaultLocale, 'defaultLocale'),
     channel: requiredString(candidate.channel, 'channel'),
-    clientContractVersion: positiveInteger(
+    clientContractVersion: nonNegativeInteger(
       candidate.clientContractVersion,
       'clientContractVersion',
     ),

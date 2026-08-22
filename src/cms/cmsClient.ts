@@ -47,7 +47,7 @@ export async function resolveCmsPage(
   url.searchParams.set('path', input.path);
   url.searchParams.set('locale', input.locale);
   url.searchParams.set('channel', input.channel);
-  url.searchParams.set('contractVersion', '1');
+  url.searchParams.set('contractVersion', '0');
   const controller = new AbortController();
   const timeout = globalThis.setTimeout(
     () => controller.abort(),

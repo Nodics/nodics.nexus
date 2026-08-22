@@ -102,13 +102,13 @@ function components(
 }
 
 export function parseCmsResolvedPage(value: unknown): CmsResolvedPageContract {
-  if (!isRecord(value) || value.contractVersion !== 1 || !isRecord(value.page))
+  if (!isRecord(value) || value.contractVersion !== 0 || !isRecord(value.page))
     throw new Error('CMS returned an incompatible page contract');
   const page = value.page;
   if (!isRecord(page.templateContract))
     throw new Error('CMS response template contract is invalid');
   return Object.freeze({
-    contractVersion: 1,
+    contractVersion: 0,
     site: string(value.site, 'site'),
     path: string(value.path, 'path'),
     locale: string(value.locale, 'locale'),
