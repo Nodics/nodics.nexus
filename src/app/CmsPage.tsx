@@ -112,10 +112,21 @@ export function CmsPage({
   }, [state]);
   if (state.status === 'loading')
     return (
-      <div className="page-state" aria-live="polite">
-        <span className="loader" />
-        Loading Nexus content…
-      </div>
+      <section className="page-state page-state-loading" aria-live="polite">
+        <div className="cms-loading-panel">
+          <p className="eyebrow">Nodics Nexus</p>
+          <h1>Preparing the published experience.</h1>
+          <p>
+            Nexus is resolving the approved Online CMS version, route contract, and
+            component graph for this page.
+          </p>
+          <div className="cms-loading-grid" aria-hidden="true">
+            <span />
+            <span />
+            <span />
+          </div>
+        </div>
+      </section>
     );
   if (state.status === 'failed') {
     const fallback = fallbackContent(state.kind);

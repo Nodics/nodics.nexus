@@ -4896,6 +4896,82 @@ a {
   color: var(--ink);
   background: var(--canvas);
 }
+.page-state-loading {
+  position: relative;
+  min-height: 100vh;
+  padding: clamp(7rem, 11vw, 10rem) clamp(1.25rem, 8vw, 8rem)
+    clamp(4rem, 7vw, 6rem);
+  overflow: hidden;
+  color: var(--white);
+  background:
+    radial-gradient(circle at 18% 22%, rgb(245 196 0 / 24%), transparent 28%),
+    linear-gradient(130deg, #242629, #111315 74%);
+}
+.page-state-loading::before {
+  position: fixed;
+  z-index: 10;
+  top: 0;
+  right: 0;
+  left: 0;
+  height: 82px;
+  background: rgb(36 38 41 / 82%);
+  content: '';
+}
+.page-state-loading::after {
+  position: absolute;
+  inset: auto -18% -36% 42%;
+  height: 52vh;
+  border: 1px solid rgb(245 196 0 / 20%);
+  background: linear-gradient(135deg, rgb(245 196 0 / 18%), transparent 60%);
+  content: '';
+  transform: rotate(-8deg);
+}
+.cms-loading-panel {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  max-width: 860px;
+  gap: 1.35rem;
+}
+.cms-loading-panel h1 {
+  max-width: 12ch;
+  margin: 0;
+  font-size: clamp(3.1rem, 6vw, 6.4rem);
+  letter-spacing: -0.055em;
+  line-height: 0.95;
+  text-wrap: balance;
+}
+.cms-loading-panel > p:not(.eyebrow) {
+  max-width: 620px;
+  margin: 0;
+  color: #d8dadd;
+  font-size: clamp(1.05rem, 1.35vw, 1.25rem);
+  line-height: 1.75;
+}
+.cms-loading-grid {
+  display: grid;
+  width: min(100%, 660px);
+  gap: 0.85rem;
+  margin-top: 1.8rem;
+}
+.cms-loading-grid span {
+  display: block;
+  height: clamp(3.8rem, 6vw, 5.6rem);
+  border: 1px solid rgb(255 255 255 / 12%);
+  background:
+    linear-gradient(90deg, transparent, rgb(245 196 0 / 18%), transparent),
+    rgb(255 255 255 / 7%);
+  background-size: 220% 100%;
+  animation: cms-loading-sheen 1.45s ease-in-out infinite;
+}
+.cms-loading-grid span:nth-child(2) {
+  width: 82%;
+  animation-delay: 120ms;
+}
+.cms-loading-grid span:nth-child(3) {
+  width: 58%;
+  animation-delay: 240ms;
+}
 .page-state-service {
   position: relative;
   min-height: 74vh;
@@ -4972,6 +5048,14 @@ a {
   border-top-color: var(--gold);
   border-radius: 50%;
   animation: spin 0.8s linear infinite;
+}
+@keyframes cms-loading-sheen {
+  0% {
+    background-position: 180% 0;
+  }
+  100% {
+    background-position: -60% 0;
+  }
 }
 .contract-error {
   margin: 1rem;
