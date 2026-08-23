@@ -19,10 +19,9 @@ const LOCAL_SECURITY_HEADERS = {
 } as const;
 const LOCAL_DEVELOPMENT_SECURITY_HEADERS = {
   ...LOCAL_SECURITY_HEADERS,
-  'Content-Security-Policy': LOCAL_SECURITY_HEADERS['Content-Security-Policy'].replace(
-    "script-src 'self'",
-    "script-src 'self' 'unsafe-inline'",
-  ),
+  'Content-Security-Policy': LOCAL_SECURITY_HEADERS[
+    'Content-Security-Policy'
+  ].replace("script-src 'self'", "script-src 'self' 'unsafe-inline'"),
 } as const;
 const required = (env: Record<string, string>, name: string) => {
   const value = env[name]?.trim();

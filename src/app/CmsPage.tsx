@@ -117,8 +117,8 @@ export function CmsPage({
           <p className="eyebrow">Nodics Nexus</p>
           <h1>Preparing the published experience.</h1>
           <p>
-            Nexus is resolving the approved Online CMS version, route contract, and
-            component graph for this page.
+            Nexus is resolving the approved Online CMS version, route contract,
+            and component graph for this page.
           </p>
           <div className="cms-loading-grid" aria-hidden="true">
             <span />
@@ -183,9 +183,10 @@ export function CmsPage({
           <p className="eyebrow">Nodics Nexus</p>
           <h1>Published home content is missing.</h1>
           <p>
-            Nexus reached WCMS Online, but the published home page did not include
-            any visible components. Review Axis Publishing Requests, approval tasks,
-            and Staged-to-Online Status, then publish the Nexus website content.
+            Nexus reached WCMS Online, but the published home page did not
+            include any visible components. Review Axis Publishing Requests,
+            approval tasks, and Staged-to-Online Status, then publish the Nexus
+            website content.
           </p>
           <p className="service-state-detail">
             Site: {mapping.siteCode} · Path: {path} · Channel: {config.channel}

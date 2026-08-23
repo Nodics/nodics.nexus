@@ -146,7 +146,9 @@ describe('Nexus CMS page', () => {
         name: 'Published home content is missing.',
       }),
     ).toBeInTheDocument();
-    expect(screen.getByText(/Review Axis Publishing Requests/i)).toBeInTheDocument();
+    expect(
+      screen.getByText(/Review Axis Publishing Requests/i),
+    ).toBeInTheDocument();
     expect(screen.getByRole('link', { name: 'Open Axis' })).toHaveAttribute(
       'href',
       'http://localhost:3100',

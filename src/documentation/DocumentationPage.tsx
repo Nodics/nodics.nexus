@@ -277,9 +277,10 @@ function DocsLanding({ config }: { readonly config: NexusRuntimeConfig }) {
   return (
     <div className="docs-landing">
       <section className="docs-landing-hero">
-        <img
-          alt="Nodics enterprise architecture and documentation workspace"
-          src="/assets/nodics/about-architecture-workshop-v2.png"
+        <div
+          aria-label="Nodics enterprise architecture and documentation workspace"
+          className="docs-landing-hero-media"
+          role="img"
         />
         <div className="docs-landing-hero-shade" />
         <div className="docs-landing-hero-copy">
