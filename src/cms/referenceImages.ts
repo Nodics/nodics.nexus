@@ -1,7 +1,19 @@
-export const referenceImageSource = (code: string): string | undefined => {
+export const referenceImageSource = (
+  code: string,
+  cmsBaseUrl?: string,
+): string | undefined => {
   const value = code.trim();
   if (!value) return undefined;
   if (/^(https?:)?\/\//u.test(value)) return value;
+  if (value.startsWith('/nodics/media/')) {
+    return cmsBaseUrl ? new URL(value, cmsBaseUrl).toString() : value;
+  }
+  if (!value.startsWith('/') && cmsBaseUrl) {
+    return new URL(
+      `/nodics/media/v0/content/${encodeURIComponent(value)}`,
+      cmsBaseUrl,
+    ).toString();
+  }
   return undefined;
 };
 

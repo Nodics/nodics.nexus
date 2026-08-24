@@ -89,8 +89,10 @@ const ReferenceImage = ({
   component,
   className = '',
 }: Props & { className?: string }) => {
+  const runtime = useOptionalNexusRuntimeConfig();
   const source = referenceImageSource(
     text(component.properties, 'referenceImageCode'),
+    runtime?.config.endpoints.cms,
   );
   return source ? (
     <img
@@ -111,11 +113,13 @@ const BannerImages = ({
   readonly activeSlide: number;
   readonly transitionEffect: number;
 }) => {
+  const runtime = useOptionalNexusRuntimeConfig();
   return (
     <div className="hero-slideshow" aria-hidden="true">
       {slides.map((slide, index) => {
         const source = referenceImageSource(
           text(slide.properties, 'referenceImageCode'),
+          runtime?.config.endpoints.cms,
         );
         return source ? (
           <img
@@ -158,8 +162,10 @@ function BannerSlideContent({
 }
 
 export function BannerSlideRenderer({ component }: Props) {
+  const runtime = useOptionalNexusRuntimeConfig();
   const source = referenceImageSource(
     text(component.properties, 'referenceImageCode'),
+    runtime?.config.endpoints.cms,
   );
   return (
     <section
@@ -193,7 +199,11 @@ export function BannerSlideRenderer({ component }: Props) {
 
 export function PageHeroRenderer({ component }: Props) {
   const p = component.properties;
-  const source = referenceImageSource(text(p, 'referenceImageCode'));
+  const runtime = useOptionalNexusRuntimeConfig();
+  const source = referenceImageSource(
+    text(p, 'referenceImageCode'),
+    runtime?.config.endpoints.cms,
+  );
   const currentLabel = text(p, 'breadcrumbLabel', text(p, 'heading'));
   return (
     <section
@@ -979,7 +989,10 @@ export function TestimonialsRenderer({ component }: Props) {
   const activeAvatar =
     activeTestimonial &&
     typeof activeTestimonial.avatarReferenceImageCode === 'string'
-      ? referenceImageSource(activeTestimonial.avatarReferenceImageCode)
+      ? referenceImageSource(
+          activeTestimonial.avatarReferenceImageCode,
+          runtime?.config.endpoints.cms,
+        )
       : '';
   const move = (direction: number) => {
     if (!testimonials.length) return;
@@ -1002,7 +1015,10 @@ export function TestimonialsRenderer({ component }: Props) {
           {mosaicItems.map((testimonial, index) => {
             const source =
               typeof testimonial.avatarReferenceImageCode === 'string'
-                ? referenceImageSource(testimonial.avatarReferenceImageCode)
+                ? referenceImageSource(
+                    testimonial.avatarReferenceImageCode,
+                    runtime?.config.endpoints.cms,
+                  )
                 : '';
             return source ? (
               <img
