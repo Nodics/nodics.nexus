@@ -21,3 +21,14 @@
   customization path.
 - News, Blogs, Wiki content, and commerce-demo routes are outside the initial
   corporate release.
+
+## AI tool GitHub entry path
+
+A user may start Nexus work from Codex, Claude Code, GitHub Copilot, or another
+repository-aware AI coding tool by providing the Nexus GitHub repository URL.
+In that path the user does not need to run `nodics.installer` first.
+
+The AI tool must read this `AGENTS.md`, the Nexus README, and the nearest
+feature README/AGENTS or focused tests before changing source. Use
+`nodics.installer` only when the request is to create, repair, preflight, start,
+initialize, accept, or inspect a local customer workspace that includes Nexus.

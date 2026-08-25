@@ -5,6 +5,17 @@ later, the demonstration commerce experience. The initial release serves only
 `nexusCorporateSite` locally and renders backend-owned WCMS content through an
 allowlisted component registry.
 
+## AI tool entry
+
+A beginner user can start from Codex, Claude Code, GitHub Copilot, or another
+repository-aware AI coding tool by providing the Nexus GitHub repository URL
+directly. The user does not need to run `nodics.installer` first for repository
+analysis or source work. The AI tool must read root `AGENTS.md`, then this
+README, then the nearest feature README/AGENTS or focused tests before changing
+files. Use `nodics.installer` only when creating, repairing, or operating a
+local customer workspace that includes Nexus or a customer-named corporate site
+derived from Nexus.
+
 ## Local startup
 
 Start the Kickoff WCMS server, import the `nexusData` core content release, and
