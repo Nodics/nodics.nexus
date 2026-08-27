@@ -14,6 +14,7 @@ import type {
   NexusHostMapping,
   NexusRuntimeConfig,
 } from '../runtime/runtimeConfig';
+import { SiteShell, type SiteShellContent, type SiteShellFooterGroup, type SiteShellLink } from './SiteShell';
 
 type State =
   | { status: 'loading' }
@@ -24,18 +25,18 @@ type State =
       message: string;
     };
 
-function fallbackContent(kind: CmsPageDeliveryErrorKind) {
-  if (kind === 'not-found')
+function fallbackContent(kind: CmsPageDeliveryErrorKind, path: string) {
+  if (kind === 'not-found' && path !== '/')
     return {
       eyebrow: 'Page not found',
       heading: 'This Nexus page does not exist.',
-      body: 'The route you opened is not part of the current Nexus site. Please continue from the home page or use the main navigation.',
+      body: 'The page you opened is not available. Please continue from the home page.',
       showRetry: false,
     };
   return {
     eyebrow: 'Nodics Nexus',
-    heading: 'Nexus services are temporarily unavailable.',
-    body: 'The platform services behind Nexus are starting, being updated, or cannot be reached right now. Please try again in a moment.',
+    heading: 'We are getting Nexus ready.',
+    body: 'The site is not available right now while we complete a content update. Please check back shortly.',
     showRetry: true,
   };
 }
@@ -63,6 +64,64 @@ function fallbackPageHero(pageName: string): CmsComponentContract {
         'Enterprise architects shaping a connected modular Nodics platform',
     },
   };
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null && !Array.isArray(value);
+}
+
+function string(value: unknown): string | undefined {
+  return typeof value === 'string' && value.trim() ? value : undefined;
+}
+
+function records(value: unknown): readonly Record<string, unknown>[] {
+  return Array.isArray(value) ? value.filter(isRecord) : Object.freeze([]);
+}
+
+function shellLink(value: unknown): SiteShellLink | undefined {
+  if (!isRecord(value)) return undefined;
+  const label = string(value.label);
+  const href = string(value.href);
+  if (!label || !href) return undefined;
+  return Object.freeze({
+    label,
+    href,
+    ...(string(value.id) ? { id: string(value.id) } : {}),
+  });
+}
+
+function shellFooterGroup(value: unknown): SiteShellFooterGroup | undefined {
+  if (!isRecord(value)) return undefined;
+  const title = string(value.title);
+  const links = Object.freeze(records(value.links).map(shellLink).filter((item): item is SiteShellLink => Boolean(item)));
+  if (!title || !links.length) return undefined;
+  return Object.freeze({ title, links });
+}
+
+function isSiteShellComponent(component: CmsComponentContract): boolean {
+  return component.renderer === 'nexus.component.site-header' || component.renderer === 'nexus.component.site-footer';
+}
+
+function siteShellFromPage(page: CmsResolvedPageContract): SiteShellContent | undefined {
+  const header = page.page.components.find((component) => component.active && component.renderer === 'nexus.component.site-header');
+  const footer = page.page.components.find((component) => component.active && component.renderer === 'nexus.component.site-footer');
+  if (!header && !footer) return undefined;
+  return Object.freeze({
+    ...(string(header?.properties.brandLabel) ? { brandLabel: string(header?.properties.brandLabel) } : {}),
+    ...(string(header?.properties.brandSubtitle) ? { brandSubtitle: string(header?.properties.brandSubtitle) } : {}),
+    ...(string(footer?.properties.brandSummary) ? { brandSummary: string(footer?.properties.brandSummary) } : {}),
+    ...(string(footer?.properties.contactHeading) ? { contactHeading: string(footer?.properties.contactHeading) } : {}),
+    ...(string(footer?.properties.contactEmail) ? { contactEmail: string(footer?.properties.contactEmail) } : {}),
+    navigation: Object.freeze(records(header?.properties.navigation).map(shellLink).filter((item): item is SiteShellLink => Boolean(item))),
+    footerGroups: Object.freeze(records(footer?.properties.groups).map(shellFooterGroup).filter((item): item is SiteShellFooterGroup => Boolean(item))),
+    ...(string(footer?.properties.legalText) ? { legalText: string(footer?.properties.legalText) } : {}),
+    legalLinks: Object.freeze(records(footer?.properties.legalLinks).map(shellLink).filter((item): item is SiteShellLink => Boolean(item))),
+    socialLinks: Object.freeze(records(footer?.properties.socialLinks).map((item) => {
+      const name = string(item.name);
+      const href = string(item.href);
+      return name && href ? Object.freeze({ name, href }) : undefined;
+    }).filter((item): item is { readonly name: string; readonly href: string } => Boolean(item))),
+  });
 }
 
 export function CmsPage({
@@ -115,10 +174,10 @@ export function CmsPage({
       <section className="page-state page-state-loading" aria-live="polite">
         <div className="cms-loading-panel">
           <p className="eyebrow">Nodics Nexus</p>
-          <h1>Preparing the published experience.</h1>
+          <h1>Opening Nexus.</h1>
           <p>
-            Nexus is resolving the approved Online CMS version, route contract,
-            and component graph for this page.
+            Thanks for your patience while the latest experience is being
+            prepared.
           </p>
           <div className="cms-loading-grid" aria-hidden="true">
             <span />
@@ -129,16 +188,13 @@ export function CmsPage({
       </section>
     );
   if (state.status === 'failed') {
-    const fallback = fallbackContent(state.kind);
+    const fallback = fallbackContent(state.kind, path);
     return (
       <section className="page-state page-state-service" role="alert">
         <div className="service-state-panel">
           <p className="eyebrow">{fallback.eyebrow}</p>
           <h1>{fallback.heading}</h1>
           <p>{fallback.body}</p>
-          {state.message ? (
-            <p className="service-state-detail">Reference: {state.message}</p>
-          ) : null}
           <div className="service-state-actions">
             {fallback.showRetry ? (
               <button
@@ -160,6 +216,8 @@ export function CmsPage({
     );
   }
   const page = state.page.page;
+  const shell = siteShellFromPage(state.page);
+  const bodyComponents = page.components.filter((component) => !isSiteShellComponent(component));
   const hasPageHero = page.components.some(
     (component) => component.renderer === 'nexus.component.page-hero',
   );
@@ -181,15 +239,10 @@ export function CmsPage({
       <section className="page-state page-state-service" role="alert">
         <div className="service-state-panel">
           <p className="eyebrow">Nodics Nexus</p>
-          <h1>Published home content is missing.</h1>
+          <h1>We are getting Nexus ready.</h1>
           <p>
-            Nexus reached WCMS Online, but the published home page did not
-            include any visible components. Review Axis Publishing Requests,
-            approval tasks, and Staged-to-Online Status, then publish the Nexus
-            website content.
-          </p>
-          <p className="service-state-detail">
-            Site: {mapping.siteCode} · Path: {path} · Channel: {config.channel}
+            The site is not available right now while we complete a content
+            update. Please check back shortly.
           </p>
           <div className="service-state-actions">
             <button
@@ -201,37 +254,36 @@ export function CmsPage({
             >
               Try again
             </button>
-            <a className="button button-secondary" href={config.axisBaseUrl}>
-              Open Axis
-            </a>
           </div>
         </div>
       </section>
     );
   }
   return (
-    <NexusRuntimeConfigContext.Provider value={{ config, mapping }}>
-      <div
-        className={
-          page.renderer === 'nexus.page.home' ? 'home-page' : 'standard-page'
-        }
-      >
-        {page.renderer === 'nexus.page.standard' && !hasPageHero ? (
-          <CmsComponentRenderer
-            channel={config.channel}
-            component={fallbackPageHero(page.name || page.code)}
-          />
-        ) : null}
-        {[...page.components]
-          .sort((a, b) => a.index - b.index)
-          .map((component) => (
+    <SiteShell axisBaseUrl={config.axisBaseUrl} shell={shell}>
+      <NexusRuntimeConfigContext.Provider value={{ config, mapping }}>
+        <div
+          className={
+            page.renderer === 'nexus.page.home' ? 'home-page' : 'standard-page'
+          }
+        >
+          {page.renderer === 'nexus.page.standard' && !hasPageHero ? (
             <CmsComponentRenderer
-              key={component.code}
-              component={component}
               channel={config.channel}
+              component={fallbackPageHero(page.name || page.code)}
             />
-          ))}
-      </div>
-    </NexusRuntimeConfigContext.Provider>
+          ) : null}
+          {[...bodyComponents]
+            .sort((a, b) => a.index - b.index)
+            .map((component) => (
+              <CmsComponentRenderer
+                key={component.code}
+                component={component}
+                channel={config.channel}
+              />
+            ))}
+        </div>
+      </NexusRuntimeConfigContext.Provider>
+    </SiteShell>
   );
 }

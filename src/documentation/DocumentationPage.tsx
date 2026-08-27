@@ -1,5 +1,6 @@
-import { useEffect, useMemo, useState, type ReactNode } from 'react';
-import { resolveCmsPage } from '../cms/cmsClient';
+import mermaid from 'mermaid';
+import { useEffect, useId, useMemo, useState, type ReactNode } from 'react';
+import { CmsPageDeliveryError, resolveCmsPage } from '../cms/cmsClient';
 import type {
   CmsComponentContract,
   CmsResolvedPageContract,
@@ -47,6 +48,23 @@ type State =
   | { status: 'ready'; page: CmsResolvedPageContract }
   | { status: 'failed'; message: string };
 
+function documentationFailureMessage(error: unknown): string {
+  const isNotFound =
+    error instanceof CmsPageDeliveryError
+      ? error.kind === 'not-found'
+      : Boolean(
+          error &&
+          typeof error === 'object' &&
+          'kind' in error &&
+          (error as { readonly kind?: unknown }).kind === 'not-found',
+        );
+  if (isNotFound)
+    return 'This documentation page is not published for public Nexus readers yet.';
+  return error instanceof Error
+    ? error.message
+    : 'Documentation is unavailable';
+}
+
 function safeText(value: unknown): string {
   return typeof value === 'string' ? value : '';
 }
@@ -60,6 +78,82 @@ function inlineText(value: string): ReactNode {
       return <strong key={index}>{part.slice(2, -2)}</strong>;
     return part;
   });
+}
+
+const MAX_DIAGRAM_LENGTH = 20_000;
+
+function stringList(value: unknown, limit = 50): readonly string[] {
+  return Array.isArray(value)
+    ? value.slice(0, limit).map(safeText).filter(Boolean)
+    : [];
+}
+
+function DocumentationDiagram({
+  block,
+}: {
+  readonly block: Record<string, unknown>;
+}) {
+  const diagramId = useId().replace(/:/g, '');
+  const diagramText = safeText(block.text).slice(0, MAX_DIAGRAM_LENGTH);
+  const title = safeText(block.title) || 'Documentation diagram';
+  const [svg, setSvg] = useState('');
+  const [error, setError] = useState('');
+
+  useEffect(() => {
+    let active = true;
+    mermaid.initialize({
+      startOnLoad: false,
+      securityLevel: 'strict',
+      theme: 'base',
+      themeVariables: {
+        background: '#ffffff',
+        fontFamily: 'Inter, system-ui, sans-serif',
+        primaryColor: '#fff7dc',
+        primaryBorderColor: '#f7c600',
+        primaryTextColor: '#17191c',
+        lineColor: '#6b7280',
+        secondaryColor: '#ecfdf5',
+        tertiaryColor: '#eff6ff',
+      },
+    });
+    mermaid
+      .render(`nexusDocsDiagram${diagramId}`, diagramText)
+      .then((result) => {
+        if (!active) return;
+        setSvg(result.svg);
+        setError('');
+      })
+      .catch(() => {
+        if (!active) return;
+        setSvg('');
+        setError(
+          'Diagram could not be rendered. The source is shown below for troubleshooting.',
+        );
+      });
+    return () => {
+      active = false;
+    };
+  }, [diagramId, diagramText]);
+
+  return (
+    <figure className="docs-diagram">
+      <figcaption>{title}</figcaption>
+      {svg ? (
+        <div
+          className="docs-diagram-canvas"
+          dangerouslySetInnerHTML={{ __html: svg }}
+        />
+      ) : null}
+      {error ? (
+        <div className="docs-diagram-fallback" role="alert">
+          <p>{error}</p>
+          <pre>
+            <code>{diagramText}</code>
+          </pre>
+        </div>
+      ) : null}
+    </figure>
+  );
 }
 
 function DocumentationBlock({
@@ -76,12 +170,13 @@ function DocumentationBlock({
   }
   if (kind === 'paragraph') return <p>{inlineText(text)}</p>;
   if (kind === 'blockquote') return <blockquote>{inlineText(text)}</blockquote>;
-  if (kind === 'code' || kind === 'diagram')
+  if (kind === 'code')
     return (
       <pre>
         <code>{text}</code>
       </pre>
     );
+  if (kind === 'diagram') return <DocumentationDiagram block={block} />;
   if (kind === 'unordered-list' || kind === 'ordered-list') {
     const items = Array.isArray(block.items) ? block.items.map(safeText) : [];
     const Tag = kind === 'ordered-list' ? 'ol' : 'ul';
@@ -134,12 +229,33 @@ function navigationItems(component: CmsComponentContract) {
     const route = safeText(candidate.route);
     const category =
       safeText(candidate.sectionTitle) || safeText(candidate.section);
+    const section = category || 'Documentation';
+    const sectionOrder =
+      typeof candidate.sectionOrder === 'number' ? candidate.sectionOrder : 100;
+    const group =
+      safeText(candidate.groupTitle) || safeText(candidate.group) || section;
+    const groupOrder =
+      typeof candidate.groupOrder === 'number' ? candidate.groupOrder : 100;
     const audience = Array.isArray(candidate.audience)
       ? candidate.audience.map(safeText).filter(Boolean)
       : [];
     const searchText = safeText(candidate.searchText);
+    const order = typeof candidate.order === 'number' ? candidate.order : 100;
     return title && route.startsWith('/docs')
-      ? [{ title, route, category, audience, searchText }]
+      ? [
+          {
+            title,
+            route,
+            category,
+            section,
+            sectionOrder,
+            group,
+            groupOrder,
+            audience,
+            searchText,
+            order,
+          },
+        ]
       : [];
   });
 }
@@ -378,10 +494,7 @@ export function DocumentationPage({
         if (!controller.signal.aborted)
           setState({
             status: 'failed',
-            message:
-              error instanceof Error
-                ? error.message
-                : 'Documentation is unavailable',
+            message: documentationFailureMessage(error),
           });
       });
     return () => controller.abort();
@@ -447,6 +560,21 @@ export function DocumentationPage({
       (!audience || item.audience.includes(audience))
     );
   });
+  const groupedItems = filteredItems.reduce((result, item) => {
+    const section = item.section || item.category || 'Documentation';
+    const group = item.group || section;
+    const sectionEntry = result.get(section) ?? {
+      order: item.sectionOrder,
+      groups: new Map<string, typeof filteredItems>(),
+    };
+    sectionEntry.order = Math.min(sectionEntry.order, item.sectionOrder);
+    sectionEntry.groups.set(group, [
+      ...(sectionEntry.groups.get(group) ?? []),
+      item,
+    ]);
+    result.set(section, sectionEntry);
+    return result;
+  }, new Map<string, { order: number; groups: Map<string, typeof filteredItems> }>());
   const blocks =
     article && Array.isArray(article.properties.blocks)
       ? article.properties.blocks
@@ -468,6 +596,10 @@ export function DocumentationPage({
   const sectionTitle =
     safeText(article?.properties.sectionTitle) || source.title;
   const articleTitle = safeText(article?.properties.title) || page.name;
+  const visualRequirements = stringList(article?.properties.visualRequirements);
+  const maturityState = safeText(article?.properties.maturityState);
+  const accessMode = safeText(article?.properties.accessMode);
+  const lifecycleState = safeText(article?.properties.lifecycleState);
   return (
     <div className={`docs-layout${embedded ? ' docs-layout-embedded' : ''}`}>
       <aside className="docs-sidebar">
@@ -507,16 +639,50 @@ export function DocumentationPage({
             </button>
           ))}
         </div>
-        <nav>
-          {filteredItems.map((item) => (
-            <a
-              className={item.route === path ? 'active' : ''}
-              href={item.route}
-              key={item.route}
-            >
-              {item.title}
-            </a>
-          ))}
+        <nav className="docs-nav-tree">
+          {[...groupedItems.entries()]
+            .sort(
+              (left, right) =>
+                left[1].order - right[1].order ||
+                left[0].localeCompare(right[0]),
+            )
+            .map(([section, sectionEntry]) => (
+              <details key={section} open>
+                <summary>{section}</summary>
+                {[...sectionEntry.groups.entries()]
+                  .sort((left, right) => {
+                    const leftOrder = Math.min(
+                      ...left[1].map((item) => item.groupOrder),
+                    );
+                    const rightOrder = Math.min(
+                      ...right[1].map((item) => item.groupOrder),
+                    );
+                    return (
+                      leftOrder - rightOrder || left[0].localeCompare(right[0])
+                    );
+                  })
+                  .map(([group, groupItems]) => (
+                    <details className="docs-nav-group" key={group} open>
+                      <summary>{group}</summary>
+                      {groupItems
+                        .sort(
+                          (left, right) =>
+                            left.order - right.order ||
+                            left.title.localeCompare(right.title),
+                        )
+                        .map((item) => (
+                          <a
+                            className={item.route === path ? 'active' : ''}
+                            href={item.route}
+                            key={item.route}
+                          >
+                            {item.title}
+                          </a>
+                        ))}
+                    </details>
+                  ))}
+              </details>
+            ))}
         </nav>
         {filteredItems.length === 0 ? (
           <p className="docs-empty">
@@ -541,12 +707,26 @@ export function DocumentationPage({
           ).map((item) => (
             <span key={item}>{item}</span>
           ))}
+          {maturityState ? <span>{maturityState}</span> : null}
+          {accessMode ? <span>{accessMode}</span> : null}
+          {lifecycleState ? <span>{lifecycleState}</span> : null}
         </div>
         <h1>{articleTitle}</h1>
         {safeText(article?.properties.summary) ? (
           <p className="docs-summary">
             {safeText(article?.properties.summary)}
           </p>
+        ) : null}
+        {visualRequirements.length > 0 ? (
+          <div
+            className="docs-visual-contract"
+            aria-label="Visual requirements"
+          >
+            <strong>Visual contract</strong>
+            {visualRequirements.map((requirement) => (
+              <span key={requirement}>{requirement}</span>
+            ))}
+          </div>
         ) : null}
         {headings.length > 0 ? (
           <nav className="docs-toc" aria-label="On this page">

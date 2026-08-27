@@ -1,6 +1,14 @@
-export function Brand() {
+export function Brand({
+  href = '/',
+  label = 'NODICS',
+  subtitle = 'NEXUS',
+}: {
+  readonly href?: string;
+  readonly label?: string;
+  readonly subtitle?: string;
+}) {
   return (
-    <a className="brand" href="/" aria-label="Nodics Nexus home">
+    <a className="brand" href={href} aria-label={`${label} ${subtitle}`.trim()}>
       <svg className="brand-mark" aria-hidden="true" viewBox="0 0 64 64">
         <path
           d="M24 6H14l-4 4v14l-6 6v4l6 6v14l4 4h10M40 6h10l4 4v14l6 6v4l-6 6v14l-4 4H40"
@@ -24,8 +32,8 @@ export function Brand() {
         </text>
       </svg>
       <span className="brand-lockup">
-        <strong>NODICS</strong>
-        <small>NEXUS</small>
+        <strong>{label}</strong>
+        <small>{subtitle}</small>
       </span>
     </a>
   );

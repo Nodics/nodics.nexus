@@ -316,10 +316,8 @@ const Listing = ({
   }, [contentTypeCode, liveListingAvailable, runtime, staticArticles]);
   const articles = useMemo(
     () =>
-      liveListingAvailable
-        ? liveStatus === 'ready'
-          ? liveArticles
-          : []
+      liveListingAvailable && liveStatus === 'ready' && liveArticles.length > 0
+        ? liveArticles
         : staticArticles,
     [liveArticles, liveListingAvailable, liveStatus, staticArticles],
   );

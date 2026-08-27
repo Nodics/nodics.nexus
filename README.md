@@ -1,9 +1,8 @@
 # Nodics Nexus
 
-Nodics Nexus is the public React frontend for the Nodics corporate website and,
-later, the demonstration commerce experience. The initial release serves only
-`nexusCorporateSite` locally and renders backend-owned WCMS content through an
-allowlisted component registry.
+Nodics Nexus is the public React frontend for the Nodics corporate website and
+approved public documentation. It serves `nexusCorporateSite` locally and
+renders backend-owned WCMS content through an allowlisted component registry.
 
 ## AI tool entry
 
@@ -38,9 +37,9 @@ Open <http://localhost:3200>. Public runtime configuration is generated as
 The homepage contains Hero, About, Why Nodics, Platform, Technology,
 Developers, GitHub/Open Source, Ecosystem/Partners, Testimonials, and Contact.
 Additional routes cover About, Platform, Developers, Ecosystem, Testimonials,
-Contact, Privacy, Terms, and Cookies. Documentation is linked at
-`docs.nodics.in`; Wiki, News, Blogs, and demo commerce are intentionally
-excluded.
+Contact, Privacy, Terms, and Cookies. Public documentation links resolve to
+the approved Online documentation catalogue. Wiki, News, Blogs, and commerce
+accelerator storefronts remain separate journeys.
 
 ## Verify
 
@@ -49,6 +48,6 @@ npm run verify
 ```
 
 CMS owns content and publication. Nexus owns only executable renderers and safe
-browser behavior. Partners customize content through a later backend project
-module and customize presentation through a new allowlisted renderer without
-copying CMS authority into the browser.
+browser behavior. Partners customize content through backend project modules
+and customize presentation through allowlisted renderers without copying CMS
+authority into the browser.

@@ -6,7 +6,6 @@ import {
   type NexusRuntimeConfig,
 } from '../runtime/runtimeConfig';
 import { CmsPage } from './CmsPage';
-import { SiteShell } from './SiteShell';
 import { DocumentationPage } from '../documentation/DocumentationPage';
 
 type State =
@@ -47,13 +46,7 @@ export function NexusBootstrap() {
       </main>
     );
   const path = window.location.pathname.replace(/\/+$/u, '') || '/';
-  return (
-    <SiteShell axisBaseUrl={state.config.axisBaseUrl}>
-      {path === '/docs' || path.startsWith('/docs/') ? (
-        <DocumentationPage config={state.config} path={path} />
-      ) : (
-        <CmsPage config={state.config} mapping={state.mapping} path={path} />
-      )}
-    </SiteShell>
-  );
+  if (path === '/docs' || path.startsWith('/docs/'))
+    return <DocumentationPage config={state.config} path={path} />;
+  return <CmsPage config={state.config} mapping={state.mapping} path={path} />;
 }

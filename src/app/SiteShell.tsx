@@ -1,113 +1,103 @@
 import { useEffect, useMemo, useState, type ReactNode } from 'react';
 import { Brand } from '../components/Brand';
-import { SocialLinks } from '../components/SocialLinks';
+import { SocialLinks, type SocialChannel } from '../components/SocialLinks';
 
-const navigation = [
-  ['Home', '/', 'home'],
-  ['About', '/#aboutus', 'about'],
-  ['Features', '/#features', 'features'],
-  ['Products', '/#products', 'products'],
-  ['Support', '/#support', 'support'],
-  ['Blogs', '/#blogs', 'blogs'],
-  ['Contact', '/#contact', 'contact'],
-] as const;
+export interface SiteShellLink {
+  readonly label: string;
+  readonly href: string;
+  readonly id?: string;
+}
 
-const homeSectionNavigation = [
-  ['aboutus', 'about'],
-  ['features', 'features'],
-  ['products', 'products'],
-  ['support', 'support'],
-  ['blogs', 'blogs'],
-  ['contact', 'contact'],
-] as const;
+export interface SiteShellFooterGroup {
+  readonly title: string;
+  readonly links: readonly SiteShellLink[];
+}
 
-const footerGroups = [
-  {
-    title: 'Platform',
-    links: [
-      ['Features', '/#features'],
-      ['Products', '/#products'],
-      ['Technology Stack', '/#products'],
-      ['Support', '/#support'],
-    ],
-  },
-  {
-    title: 'Developers',
-    links: [
-      ['Wiki', '/docs'],
-      ['API Reference', '/docs?tab=api'],
-      ['GitHub', 'https://github.com/Nodics'],
-      ['Axis', ''],
-    ],
-  },
-  {
-    title: 'Company',
-    links: [
-      ['About', '/#aboutus'],
-      ['Ecosystem', '/#ecosystem'],
-      ['Contact', '/#contact'],
-      ['Testimonials', '/#testimonials'],
-    ],
-  },
-  {
-    title: 'Resources',
-    links: [
-      ['Blogs', '/blogs'],
-      ['News', '/news'],
-      ['Documentation Gateway', '/docs'],
-    ],
-  },
-  {
-    title: 'Legal',
-    links: [
-      ['Privacy', '/privacy'],
-      ['Terms', '/terms'],
-      ['Cookies', '/cookies'],
-    ],
-  },
-] as const;
+export interface SiteShellContent {
+  readonly brandLabel?: string;
+  readonly brandSubtitle?: string;
+  readonly brandSummary?: string;
+  readonly contactHeading?: string;
+  readonly contactEmail?: string;
+  readonly navigation: readonly SiteShellLink[];
+  readonly footerGroups: readonly SiteShellFooterGroup[];
+  readonly legalText?: string;
+  readonly legalLinks: readonly SiteShellLink[];
+  readonly socialLinks: readonly SocialChannel[];
+}
 
-function activeNavigationFromPath(pathname: string): string {
-  if (pathname === '/') return 'home';
-  if (pathname.startsWith('/docs')) return 'wiki';
+function normalizedHref(href: string, axisBaseUrl: string): string {
+  if (href === 'axis' || href === '{axisBaseUrl}') return axisBaseUrl;
+  return href;
+}
+
+function hrefPath(href: string): string {
+  try {
+    return new URL(href, window.location.origin).pathname;
+  } catch {
+    return href.split('#')[0].split('?')[0] || '/';
+  }
+}
+
+function activeNavigationFromPath(pathname: string, navigation: readonly SiteShellLink[]): string {
+  const exactMatch = navigation.find((item) => hrefPath(item.href) === pathname);
+  if (exactMatch) return exactMatch.id ?? exactMatch.label;
+  const segment = pathname.split('/').filter(Boolean)[0];
+  const segmentMatch = navigation.find((item) => item.id === segment);
+  if (segmentMatch) return segmentMatch.id ?? segmentMatch.label;
   if (
     pathname.startsWith('/blog') ||
     pathname.startsWith('/news') ||
     pathname.startsWith('/editorial')
   )
     return 'blogs';
-  const segment = pathname.split('/').filter(Boolean)[0];
-  if (
-    segment &&
-    ['about', 'features', 'products', 'support', 'contact'].includes(segment)
-  )
-    return segment;
   return '';
 }
 
 export function SiteShell({
   axisBaseUrl,
   children,
+  shell,
 }: {
   readonly axisBaseUrl: string;
   readonly children: ReactNode;
+  readonly shell?: SiteShellContent;
+}) {
+  if (!shell)
+    return (
+      <main className="site-shell-content-only" id="main-content">
+        {children}
+      </main>
+    );
+  return <SiteShellChrome axisBaseUrl={axisBaseUrl} shell={shell}>{children}</SiteShellChrome>;
+}
+
+function SiteShellChrome({
+  axisBaseUrl,
+  children,
+  shell,
+}: {
+  readonly axisBaseUrl: string;
+  readonly children: ReactNode;
+  readonly shell: SiteShellContent;
 }) {
   const [headerIsScrolled, setHeaderIsScrolled] = useState(false);
   const [mobileNavigationOpen, setMobileNavigationOpen] = useState(false);
   const [activeNavigation, setActiveNavigation] = useState(() =>
-    activeNavigationFromPath(window.location.pathname),
+    activeNavigationFromPath(window.location.pathname, shell.navigation),
   );
-  const wikiHref = '/docs';
   const documentationRoute = window.location.pathname.startsWith('/docs');
   const documentationLanding = window.location.pathname === '/docs';
-  const axisUrl = useMemo(() => {
-    try {
-      return new URL(axisBaseUrl);
-    } catch {
-      return undefined;
-    }
-  }, [axisBaseUrl]);
-
+  const homeSectionNavigation = useMemo(
+    () =>
+      shell.navigation
+        .map((item) => {
+          const hash = item.href.includes('#') ? item.href.split('#')[1] : '';
+          return hash ? [hash, item.id ?? item.label] as const : undefined;
+        })
+        .filter((item): item is readonly [string, string] => Boolean(item)),
+    [shell.navigation],
+  );
   useEffect(() => {
     const updateHeader = () => setHeaderIsScrolled(window.scrollY > 48);
     updateHeader();
@@ -127,6 +117,7 @@ export function SiteShell({
     const updateActiveNavigation = () => {
       const pathActiveNavigation = activeNavigationFromPath(
         window.location.pathname,
+        shell.navigation,
       );
       if (window.location.pathname !== '/') {
         setActiveNavigation(pathActiveNavigation);
@@ -156,14 +147,14 @@ export function SiteShell({
       window.removeEventListener('hashchange', updateActiveNavigation);
       window.removeEventListener('popstate', updateActiveNavigation);
     };
-  }, [headerIsScrolled]);
+  }, [headerIsScrolled, homeSectionNavigation, shell.navigation]);
 
   return (
     <div className="site-shell">
       <header
         className={`site-header${headerIsScrolled ? ' is-scrolled' : ''}${documentationRoute ? ' docs-context' : ''}${documentationLanding ? ' docs-landing-context' : ''}${mobileNavigationOpen ? ' is-menu-open' : ''}`}
       >
-        <Brand />
+        <Brand label={shell.brandLabel} subtitle={shell.brandSubtitle} />
         <button
           aria-controls="primary-navigation"
           aria-expanded={mobileNavigationOpen}
@@ -181,88 +172,59 @@ export function SiteShell({
           className={mobileNavigationOpen ? 'is-open' : undefined}
           id="primary-navigation"
         >
-          {navigation.map(([label, href, id]) => (
+          {shell.navigation.map((item) => (
             <a
-              aria-current={activeNavigation === id ? 'page' : undefined}
-              className={activeNavigation === id ? 'active' : undefined}
-              href={href}
-              key={href}
+              aria-current={activeNavigation === (item.id ?? item.label) ? 'page' : undefined}
+              className={activeNavigation === (item.id ?? item.label) ? 'active' : undefined}
+              href={normalizedHref(item.href, axisBaseUrl)}
+              key={`${item.label}-${item.href}`}
               onClick={() => setMobileNavigationOpen(false)}
+              rel={normalizedHref(item.href, axisBaseUrl).startsWith('http') ? 'noreferrer' : undefined}
+              target={normalizedHref(item.href, axisBaseUrl).startsWith('http') ? '_blank' : undefined}
             >
-              {label}
+              {item.label}
             </a>
           ))}
-          <a
-            aria-current={
-              axisUrl?.origin === window.location.origin ? 'page' : undefined
-            }
-            className={
-              axisUrl?.origin === window.location.origin ? 'active' : undefined
-            }
-            href={axisBaseUrl}
-            onClick={() => setMobileNavigationOpen(false)}
-            rel="noreferrer"
-            target="_blank"
-          >
-            Axis
-          </a>
-          <a
-            aria-current={activeNavigation === 'wiki' ? 'page' : undefined}
-            className={`nav-docs${activeNavigation === 'wiki' ? ' active' : ''}`}
-            href={wikiHref}
-            onClick={() => setMobileNavigationOpen(false)}
-          >
-            Wiki
-          </a>
         </nav>
       </header>
       <main id="main-content">{children}</main>
       <footer className="site-footer">
         <div className="footer-brand-panel">
-          <Brand />
-          <p>
-            Where enterprise capabilities, technology, and knowledge connect.
-          </p>
+          <Brand label={shell.brandLabel} subtitle={shell.brandSubtitle} />
+          {shell.brandSummary ? <p>{shell.brandSummary}</p> : null}
           <div className="footer-connect">
-            <h2>Connect</h2>
-            <SocialLinks />
-            <a href="mailto:nodics.framework@gmail.com">
-              nodics.framework@gmail.com
-            </a>
+            {shell.contactHeading ? <h2>{shell.contactHeading}</h2> : null}
+            <SocialLinks channels={shell.socialLinks} />
+            {shell.contactEmail ? <a href={`mailto:${shell.contactEmail}`}>{shell.contactEmail}</a> : null}
           </div>
         </div>
         <div className="footer-link-grid">
-          {footerGroups.map((group) => (
+          {shell.footerGroups.map((group) => (
             <div className="footer-link-column" key={group.title}>
               <h2>{group.title}</h2>
-              {group.links.map(([label, href]) => (
+              {group.links.map((item) => (
                 <a
-                  href={label === 'Axis' ? axisBaseUrl : href}
-                  key={`${group.title}-${label}`}
-                  rel={
-                    label === 'Axis' || href.startsWith('https://')
-                      ? 'noreferrer'
-                      : undefined
-                  }
-                  target={
-                    label === 'Axis' || href.startsWith('https://')
-                      ? '_blank'
-                      : undefined
-                  }
+                  href={normalizedHref(item.href, axisBaseUrl)}
+                  key={`${group.title}-${item.label}`}
+                  rel={normalizedHref(item.href, axisBaseUrl).startsWith('http') ? 'noreferrer' : undefined}
+                  target={normalizedHref(item.href, axisBaseUrl).startsWith('http') ? '_blank' : undefined}
                 >
-                  {label}
+                  {item.label}
                 </a>
               ))}
             </div>
           ))}
         </div>
-        <div className="footer-legal">
-          <span>© 2026 Nodics. All rights reserved.</span>
-          <span>Nodics Nexus</span>
-          <a href="/privacy">Privacy</a>
-          <a href="/terms">Terms</a>
-          <a href="/cookies">Cookies</a>
-        </div>
+        {(shell.legalText || shell.legalLinks.length) ? (
+          <div className="footer-legal">
+            {shell.legalText ? <span>{shell.legalText}</span> : null}
+            {shell.legalLinks.map((item) => (
+              <a href={normalizedHref(item.href, axisBaseUrl)} key={item.label}>
+                {item.label}
+              </a>
+            ))}
+          </div>
+        ) : null}
       </footer>
     </div>
   );
