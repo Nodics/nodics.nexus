@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { lazy, Suspense, useEffect, useState } from 'react';
 import {
   loadNexusRuntimeConfig,
   resolveHostMapping,
@@ -6,7 +6,13 @@ import {
   type NexusRuntimeConfig,
 } from '../runtime/runtimeConfig';
 import { CmsPage } from './CmsPage';
-import { DocumentationPage } from '../documentation/DocumentationPage';
+import { DEFAULT_NEXUS_SITE_SHELL, SiteShell } from './SiteShell';
+
+const DocumentationPage = lazy(() =>
+  import('../documentation/DocumentationPage').then((module) => ({
+    default: module.DocumentationPage,
+  })),
+);
 
 type State =
   | { status: 'loading' }
@@ -47,6 +53,21 @@ export function NexusBootstrap() {
     );
   const path = window.location.pathname.replace(/\/+$/u, '') || '/';
   if (path === '/docs' || path.startsWith('/docs/'))
-    return <DocumentationPage config={state.config} path={path} />;
+    return (
+      <SiteShell
+        axisBaseUrl={state.config.axisBaseUrl}
+        shell={DEFAULT_NEXUS_SITE_SHELL}
+      >
+        <Suspense
+          fallback={
+            <main className="page-state" aria-live="polite">
+              Loading Nexus documentation.
+            </main>
+          }
+        >
+          <DocumentationPage config={state.config} path={path} />
+        </Suspense>
+      </SiteShell>
+    );
   return <CmsPage config={state.config} mapping={state.mapping} path={path} />;
 }

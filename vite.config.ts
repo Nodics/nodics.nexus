@@ -68,6 +68,21 @@ export function buildRuntimeConfig(
     ],
   });
 }
+
+export function resolveNexusEnv(
+  loadedEnv: Record<string, string>,
+  runtimeEnv: NodeJS.ProcessEnv = process.env,
+): Record<string, string> {
+  return {
+    ...loadedEnv,
+    ...Object.fromEntries(
+      Object.entries(runtimeEnv).filter(
+        (entry): entry is [string, string] => typeof entry[1] === 'string',
+      ),
+    ),
+  };
+}
+
 function runtimePlugin(config: NexusRuntimeConfig): Plugin {
   const { endpoints, ...publicConfig } = config;
   void endpoints;
@@ -88,7 +103,7 @@ function runtimePlugin(config: NexusRuntimeConfig): Plugin {
   };
 }
 export default defineConfig(({ mode }) => {
-  const env = loadEnv(mode, process.cwd(), '');
+  const env = resolveNexusEnv(loadEnv(mode, process.cwd(), ''));
   const config = buildRuntimeConfig(env);
   const host = required(env, 'NEXUS_DEV_HOST');
   const port = positive(env, 'NEXUS_DEV_PORT');

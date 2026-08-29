@@ -26,9 +26,84 @@ export interface SiteShellContent {
   readonly socialLinks: readonly SocialChannel[];
 }
 
+export const DEFAULT_NEXUS_SITE_SHELL: SiteShellContent = Object.freeze({
+  brandLabel: 'NODICS',
+  brandSubtitle: 'NEXUS',
+  brandSummary:
+    'Where enterprise capabilities, technology, and knowledge connect.',
+  contactHeading: 'Connect',
+  contactEmail: 'nodics.framework@gmail.com',
+  navigation: Object.freeze([
+    Object.freeze({ label: 'Home', href: '/', id: 'home' }),
+    Object.freeze({ label: 'About', href: '/#aboutus', id: 'about' }),
+    Object.freeze({ label: 'Features', href: '/#features', id: 'features' }),
+    Object.freeze({ label: 'Solutions', href: '/#products', id: 'products' }),
+    Object.freeze({ label: 'Support', href: '/#support', id: 'support' }),
+    Object.freeze({ label: 'Blogs', href: '/#blogs', id: 'blogs' }),
+    Object.freeze({ label: 'Docs', href: '/docs', id: 'wiki' }),
+    Object.freeze({ label: 'Axis', href: '{axisBaseUrl}', id: 'axis' }),
+  ]),
+  footerGroups: Object.freeze([
+    Object.freeze({
+      title: 'Platform',
+      links: Object.freeze([
+        Object.freeze({ label: 'Features', href: '/#features' }),
+        Object.freeze({ label: 'Solutions', href: '/#products' }),
+        Object.freeze({ label: 'Technology Stack', href: '/#products' }),
+        Object.freeze({ label: 'Support', href: '/#support' }),
+      ]),
+    }),
+    Object.freeze({
+      title: 'Developers',
+      links: Object.freeze([
+        Object.freeze({ label: 'Docs', href: '/docs' }),
+        Object.freeze({ label: 'API Reference', href: '/docs?tab=api' }),
+        Object.freeze({ label: 'GitHub', href: 'https://github.com/Nodics' }),
+        Object.freeze({ label: 'Axis', href: '{axisBaseUrl}' }),
+      ]),
+    }),
+    Object.freeze({
+      title: 'Company',
+      links: Object.freeze([
+        Object.freeze({ label: 'About', href: '/#aboutus' }),
+        Object.freeze({ label: 'Ecosystem', href: '/#ecosystem' }),
+        Object.freeze({ label: 'Contact', href: '/#contact' }),
+        Object.freeze({ label: 'Testimonials', href: '/#testimonials' }),
+      ]),
+    }),
+    Object.freeze({
+      title: 'Resources',
+      links: Object.freeze([
+        Object.freeze({ label: 'Blogs', href: '/#blogs' }),
+        Object.freeze({ label: 'News', href: '/news' }),
+        Object.freeze({ label: 'Documentation Gateway', href: '/docs' }),
+      ]),
+    }),
+  ]),
+  legalText: '(c) 2026 Nodics. All rights reserved.',
+  legalLinks: Object.freeze([
+    Object.freeze({ label: 'Privacy', href: '/privacy' }),
+    Object.freeze({ label: 'Terms', href: '/terms' }),
+    Object.freeze({ label: 'Cookies', href: '/cookies' }),
+  ]),
+  socialLinks: Object.freeze([
+    Object.freeze({ name: 'GitHub', href: 'https://github.com/Nodics' }),
+    Object.freeze({
+      name: 'LinkedIn',
+      href: 'https://www.linkedin.com/company/nodics',
+    }),
+  ]),
+});
+
 function normalizedHref(href: string, axisBaseUrl: string): string {
   if (href === 'axis' || href === '{axisBaseUrl}') return axisBaseUrl;
   return href;
+}
+
+function normalizedShellHref(item: SiteShellLink, axisBaseUrl: string): string {
+  if (item.id === 'blogs' || item.label.toLowerCase() === 'blogs')
+    return '/#blogs';
+  return normalizedHref(item.href, axisBaseUrl);
 }
 
 function hrefPath(href: string): string {
@@ -39,9 +114,20 @@ function hrefPath(href: string): string {
   }
 }
 
-function activeNavigationFromPath(pathname: string, navigation: readonly SiteShellLink[]): string {
-  const exactMatch = navigation.find((item) => hrefPath(item.href) === pathname);
+function activeNavigationFromPath(
+  pathname: string,
+  navigation: readonly SiteShellLink[],
+): string {
+  const exactMatch = navigation.find(
+    (item) => hrefPath(item.href) === pathname,
+  );
   if (exactMatch) return exactMatch.id ?? exactMatch.label;
+  if (pathname.startsWith('/docs/')) {
+    const docsMatch = navigation.find(
+      (item) => hrefPath(item.href) === '/docs',
+    );
+    if (docsMatch) return docsMatch.id ?? docsMatch.label;
+  }
   const segment = pathname.split('/').filter(Boolean)[0];
   const segmentMatch = navigation.find((item) => item.id === segment);
   if (segmentMatch) return segmentMatch.id ?? segmentMatch.label;
@@ -69,7 +155,11 @@ export function SiteShell({
         {children}
       </main>
     );
-  return <SiteShellChrome axisBaseUrl={axisBaseUrl} shell={shell}>{children}</SiteShellChrome>;
+  return (
+    <SiteShellChrome axisBaseUrl={axisBaseUrl} shell={shell}>
+      {children}
+    </SiteShellChrome>
+  );
 }
 
 function SiteShellChrome({
@@ -92,11 +182,12 @@ function SiteShellChrome({
     () =>
       shell.navigation
         .map((item) => {
-          const hash = item.href.includes('#') ? item.href.split('#')[1] : '';
-          return hash ? [hash, item.id ?? item.label] as const : undefined;
+          const href = normalizedShellHref(item, axisBaseUrl);
+          const hash = href.includes('#') ? href.split('#')[1] : '';
+          return hash ? ([hash, item.id ?? item.label] as const) : undefined;
         })
         .filter((item): item is readonly [string, string] => Boolean(item)),
-    [shell.navigation],
+    [axisBaseUrl, shell.navigation],
   );
   useEffect(() => {
     const updateHeader = () => setHeaderIsScrolled(window.scrollY > 48);
@@ -172,19 +263,30 @@ function SiteShellChrome({
           className={mobileNavigationOpen ? 'is-open' : undefined}
           id="primary-navigation"
         >
-          {shell.navigation.map((item) => (
-            <a
-              aria-current={activeNavigation === (item.id ?? item.label) ? 'page' : undefined}
-              className={activeNavigation === (item.id ?? item.label) ? 'active' : undefined}
-              href={normalizedHref(item.href, axisBaseUrl)}
-              key={`${item.label}-${item.href}`}
-              onClick={() => setMobileNavigationOpen(false)}
-              rel={normalizedHref(item.href, axisBaseUrl).startsWith('http') ? 'noreferrer' : undefined}
-              target={normalizedHref(item.href, axisBaseUrl).startsWith('http') ? '_blank' : undefined}
-            >
-              {item.label}
-            </a>
-          ))}
+          {shell.navigation.map((item) => {
+            const href = normalizedShellHref(item, axisBaseUrl);
+            return (
+              <a
+                aria-current={
+                  activeNavigation === (item.id ?? item.label)
+                    ? 'page'
+                    : undefined
+                }
+                className={
+                  activeNavigation === (item.id ?? item.label)
+                    ? 'active'
+                    : undefined
+                }
+                href={href}
+                key={`${item.label}-${item.href}`}
+                onClick={() => setMobileNavigationOpen(false)}
+                rel={href.startsWith('http') ? 'noreferrer' : undefined}
+                target={href.startsWith('http') ? '_blank' : undefined}
+              >
+                {item.label}
+              </a>
+            );
+          })}
         </nav>
       </header>
       <main id="main-content">{children}</main>
@@ -195,7 +297,9 @@ function SiteShellChrome({
           <div className="footer-connect">
             {shell.contactHeading ? <h2>{shell.contactHeading}</h2> : null}
             <SocialLinks channels={shell.socialLinks} />
-            {shell.contactEmail ? <a href={`mailto:${shell.contactEmail}`}>{shell.contactEmail}</a> : null}
+            {shell.contactEmail ? (
+              <a href={`mailto:${shell.contactEmail}`}>{shell.contactEmail}</a>
+            ) : null}
           </div>
         </div>
         <div className="footer-link-grid">
@@ -204,10 +308,18 @@ function SiteShellChrome({
               <h2>{group.title}</h2>
               {group.links.map((item) => (
                 <a
-                  href={normalizedHref(item.href, axisBaseUrl)}
+                  href={normalizedShellHref(item, axisBaseUrl)}
                   key={`${group.title}-${item.label}`}
-                  rel={normalizedHref(item.href, axisBaseUrl).startsWith('http') ? 'noreferrer' : undefined}
-                  target={normalizedHref(item.href, axisBaseUrl).startsWith('http') ? '_blank' : undefined}
+                  rel={
+                    normalizedShellHref(item, axisBaseUrl).startsWith('http')
+                      ? 'noreferrer'
+                      : undefined
+                  }
+                  target={
+                    normalizedShellHref(item, axisBaseUrl).startsWith('http')
+                      ? '_blank'
+                      : undefined
+                  }
                 >
                   {item.label}
                 </a>
@@ -215,7 +327,7 @@ function SiteShellChrome({
             </div>
           ))}
         </div>
-        {(shell.legalText || shell.legalLinks.length) ? (
+        {shell.legalText || shell.legalLinks.length ? (
           <div className="footer-legal">
             {shell.legalText ? <span>{shell.legalText}</span> : null}
             {shell.legalLinks.map((item) => (

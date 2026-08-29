@@ -74,6 +74,10 @@ function mergeLiveDetail(
   liveArticle: NexusEditorialArticle | undefined,
 ): Article {
   if (!liveArticle) return staticArticle;
+  const staticBodyText = text(staticArticle, 'bodyText');
+  const liveBodyText = liveArticle.body || '';
+  const bodyText =
+    liveBodyText.length > staticBodyText.length ? liveBodyText : staticBodyText;
   return {
     ...staticArticle,
     code: liveArticle.articleCode || text(staticArticle, 'code'),
@@ -89,7 +93,7 @@ function mergeLiveDetail(
       ? liveArticle.takeaways
       : strings(staticArticle, 'takeaways'),
     title: liveArticle.title || text(staticArticle, 'title'),
-    ...(liveArticle.body ? { bodyText: liveArticle.body } : {}),
+    ...(bodyText ? { bodyText } : {}),
   };
 }
 
@@ -209,9 +213,11 @@ const ArticleCard = ({
 const SpecialBand = ({
   articles,
   cmsBaseUrl,
+  viewMode,
 }: {
   readonly articles: readonly Article[];
   readonly cmsBaseUrl?: string | undefined;
+  readonly viewMode: ViewMode;
 }) =>
   articles.length ? (
     <div className="editorial-special-band" aria-label="Special highlights">
@@ -240,7 +246,7 @@ const SpecialBand = ({
             <ArticleCard
               article={article}
               cmsBaseUrl={cmsBaseUrl}
-              viewMode="list"
+              viewMode={viewMode}
             />
           </div>
         ))}
@@ -357,8 +363,9 @@ const Listing = ({
   const regularArticles = visibleArticles.filter(
     (article) => !isSpecialArticle(article),
   );
-  const featuredArticle = regularArticles[0];
-  const remainingArticles = regularArticles.slice(1);
+  const featuredArticle = viewMode === 'list' ? regularArticles[0] : undefined;
+  const remainingArticles =
+    viewMode === 'list' ? regularArticles.slice(1) : regularArticles;
 
   return (
     <section
@@ -435,7 +442,11 @@ const Listing = ({
           <span>{text(p, 'contentTypeCode', 'EDITORIAL')}</span>
         </div>
 
-        <SpecialBand articles={specialArticles} cmsBaseUrl={cmsBaseUrl} />
+        <SpecialBand
+          articles={specialArticles}
+          cmsBaseUrl={cmsBaseUrl}
+          viewMode={viewMode}
+        />
 
         {featuredArticle ? (
           <div className="editorial-featured-panel">
@@ -445,13 +456,13 @@ const Listing = ({
               viewMode="list"
             />
           </div>
-        ) : (
+        ) : visibleArticles.length === 0 ? (
           <div className="editorial-empty-state">
             <p>
               {text(p, 'emptyMessage', 'No articles matched your filters.')}
             </p>
           </div>
-        )}
+        ) : null}
 
         {remainingArticles.length ? (
           <div className={`editorial-grid editorial-grid-${viewMode}`}>

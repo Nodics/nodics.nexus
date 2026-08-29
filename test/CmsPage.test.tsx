@@ -84,9 +84,7 @@ describe('Nexus CMS page', () => {
         name: 'We are getting Nexus ready.',
       }),
     ).toBeInTheDocument();
-    expect(
-      screen.getByText(/complete a content update/i),
-    ).toBeInTheDocument();
+    expect(screen.getByText(/complete a content update/i)).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Try again' })).toBeEnabled();
   });
 
@@ -186,9 +184,7 @@ describe('Nexus CMS page', () => {
         name: 'We are getting Nexus ready.',
       }),
     ).toBeInTheDocument();
-    expect(
-      screen.getByText(/complete a content update/i),
-    ).toBeInTheDocument();
+    expect(screen.getByText(/complete a content update/i)).toBeInTheDocument();
     expect(screen.queryByText(/Axis/i)).toBeNull();
   });
 
@@ -239,7 +235,9 @@ describe('Nexus CMS page', () => {
                     groups: [
                       {
                         title: 'Developers',
-                        links: [{ label: 'API Reference', href: '/docs?tab=api' }],
+                        links: [
+                          { label: 'API Reference', href: '/docs?tab=api' },
+                        ],
                       },
                     ],
                     legalText: '© 2026 Nodics. All rights reserved.',
@@ -251,7 +249,11 @@ describe('Nexus CMS page', () => {
                 cmsComponent(
                   'nexusHomeAbout',
                   'nexus.component.content',
-                  { anchor: 'aboutus', heading: 'About Nodics', body: 'Body content' },
+                  {
+                    anchor: 'aboutus',
+                    heading: 'About Nodics',
+                    body: 'Body content',
+                  },
                   2,
                 ),
               ],

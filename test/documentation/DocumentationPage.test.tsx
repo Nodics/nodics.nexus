@@ -143,6 +143,13 @@ describe('Nexus documentation page', () => {
     expect(screen.getByText('Visual contract')).toBeInTheDocument();
     expect(screen.getByText('data-flow')).toBeInTheDocument();
     expect(screen.getByText('configuration-table')).toBeInTheDocument();
+    expect(
+      screen.getByRole('tab', { name: /01\s*Framework/u }),
+    ).toHaveAttribute('aria-current', 'page');
+    expect(screen.getByRole('tab', { name: /04\s*Swagger/u })).toHaveAttribute(
+      'href',
+      '/docs/api',
+    );
     expect(screen.getByText('Runtime change propagation')).toBeInTheDocument();
     await waitFor(() =>
       expect(

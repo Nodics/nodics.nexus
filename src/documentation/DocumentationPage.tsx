@@ -43,6 +43,113 @@ const sources = [
   },
 ] as const;
 
+const documentationAreas = [
+  {
+    id: 'framework',
+    label: 'Framework',
+    eyebrow: 'Nodics Framework',
+    heading: 'Understand the foundation before composing the journey.',
+    description:
+      'Explore architecture, runtime contracts, modular ownership, security, content, commerce, and business automation across the unified Nodics framework.',
+    href: '/docs/framework',
+    linkLabel: 'Start with the Framework overview',
+    topics: [
+      {
+        code: '01',
+        title: 'Architecture',
+        text: 'Core principles, module boundaries, runtime composition, and extension contracts.',
+        href: '/docs/framework',
+      },
+      {
+        code: '02',
+        title: 'Process & Automation',
+        text: 'Workflow definitions, runtime instances, tasks, recovery, scheduling, and visual design.',
+        href: '/docs/framework/process',
+      },
+      {
+        code: '03',
+        title: 'Capability guides',
+        text: 'Implementation guidance for platform, content, commerce, security, and operations.',
+        href: '/docs/framework',
+      },
+    ],
+  },
+  {
+    id: 'axis',
+    label: 'Axis',
+    eyebrow: 'Nodics Axis',
+    heading: 'Operate the framework through one governed workspace.',
+    description:
+      'Learn the BackOffice navigation, administrative journeys, content operations, schema tools, governance, and AI-assisted operational workflows.',
+    href: '/docs/nodics-axis',
+    linkLabel: 'Open the Axis guide',
+    topics: [
+      {
+        code: '01',
+        title: 'Workspace',
+        text: 'Understand navigation, perspectives, capability discovery, and contextual help.',
+        href: '/docs/nodics-axis',
+      },
+      {
+        code: '02',
+        title: 'Administration',
+        text: 'Operate content, media, schemas, imports, configurations, and business capabilities.',
+        href: '/docs/nodics-axis',
+      },
+      {
+        code: '03',
+        title: 'Governed AI',
+        text: 'Use AI assistance while preserving permissions, human authority, and audit evidence.',
+        href: '/docs/nodics-axis',
+      },
+    ],
+  },
+  {
+    id: 'kickoff',
+    label: 'Kickoff',
+    eyebrow: 'Nodics Kickoff',
+    heading: 'Move from checkout to a working local reference solution.',
+    description:
+      'Follow environment setup, server composition, local acceptance, deployment qualification, and customer-owned customization guidance.',
+    href: '/docs/nodics-kickoff',
+    linkLabel: 'Begin the Kickoff journey',
+    topics: [
+      {
+        code: '01',
+        title: 'Local setup',
+        text: 'Prepare the framework, project runtime, Axis, and Nexus applications.',
+        href: '/docs/nodics-kickoff',
+      },
+      {
+        code: '02',
+        title: 'Runtime topology',
+        text: 'Understand server responsibilities, ports, dependencies, and startup order.',
+        href: '/docs/nodics-kickoff/kickoff-local-runtime',
+      },
+      {
+        code: '03',
+        title: 'Customization',
+        text: 'Extend project-owned code and data without copying framework authority.',
+        href: '/docs/nodics-kickoff/kickoff-customization',
+      },
+    ],
+  },
+  {
+    id: 'api',
+    label: 'Swagger',
+    eyebrow: 'Live OpenAPI',
+    heading: 'Explore the backend contract safely.',
+    description:
+      'Browse operations, parameters, responses, and schemas without authentication or request execution.',
+    href: '/docs/api',
+    linkLabel: 'Browse the API reference',
+    topics: [],
+  },
+] as const;
+
+type DocsArea = (typeof documentationAreas)[number];
+type DocsAreaId = DocsArea['id'];
+
 type State =
   | { status: 'loading' }
   | { status: 'ready'; page: CmsResolvedPageContract }
@@ -268,121 +375,62 @@ function documentationLink(value: unknown) {
   return title && route.startsWith('/docs') ? { title, route } : undefined;
 }
 
+function DocsAreaTabs({
+  activeArea,
+  onSelect,
+}: {
+  readonly activeArea: DocsAreaId;
+  readonly onSelect?: (area: DocsArea) => void;
+}) {
+  return (
+    <div className="docs-tabs" role="tablist" aria-label="Documentation areas">
+      {documentationAreas.map((area, index) =>
+        onSelect ? (
+          <button
+            aria-controls={`docs-panel-${area.id}`}
+            aria-selected={activeArea === area.id}
+            className={activeArea === area.id ? 'active' : ''}
+            id={`docs-tab-${area.id}`}
+            key={area.id}
+            role="tab"
+            type="button"
+            onClick={() => onSelect(area)}
+          >
+            <span>0{index + 1}</span>
+            {area.label}
+          </button>
+        ) : (
+          <a
+            aria-current={activeArea === area.id ? 'page' : undefined}
+            aria-selected={activeArea === area.id}
+            className={activeArea === area.id ? 'active' : ''}
+            href={area.href}
+            id={`docs-tab-${area.id}`}
+            key={area.id}
+            role="tab"
+          >
+            <span>0{index + 1}</span>
+            {area.label}
+          </a>
+        ),
+      )}
+    </div>
+  );
+}
+
 function DocsLanding({ config }: { readonly config: NexusRuntimeConfig }) {
-  const areas = [
-    {
-      id: 'framework',
-      label: 'Framework',
-      eyebrow: 'Nodics Framework',
-      heading: 'Understand the foundation before composing the journey.',
-      description:
-        'Explore architecture, runtime contracts, modular ownership, security, content, commerce, and business automation across the unified Nodics framework.',
-      href: '/docs/framework',
-      linkLabel: 'Start with the Framework overview',
-      topics: [
-        {
-          code: '01',
-          title: 'Architecture',
-          text: 'Core principles, module boundaries, runtime composition, and extension contracts.',
-          href: '/docs/framework',
-        },
-        {
-          code: '02',
-          title: 'Process & Automation',
-          text: 'Workflow definitions, runtime instances, tasks, recovery, scheduling, and visual design.',
-          href: '/docs/framework/process',
-        },
-        {
-          code: '03',
-          title: 'Capability guides',
-          text: 'Implementation guidance for platform, content, commerce, security, and operations.',
-          href: '/docs/framework',
-        },
-      ],
-    },
-    {
-      id: 'axis',
-      label: 'Axis',
-      eyebrow: 'Nodics Axis',
-      heading: 'Operate the framework through one governed workspace.',
-      description:
-        'Learn the BackOffice navigation, administrative journeys, content operations, schema tools, governance, and AI-assisted operational workflows.',
-      href: '/docs/nodics-axis',
-      linkLabel: 'Open the Axis guide',
-      topics: [
-        {
-          code: '01',
-          title: 'Workspace',
-          text: 'Understand navigation, perspectives, capability discovery, and contextual help.',
-          href: '/docs/nodics-axis',
-        },
-        {
-          code: '02',
-          title: 'Administration',
-          text: 'Operate content, media, schemas, imports, configurations, and business capabilities.',
-          href: '/docs/nodics-axis',
-        },
-        {
-          code: '03',
-          title: 'Governed AI',
-          text: 'Use AI assistance while preserving permissions, human authority, and audit evidence.',
-          href: '/docs/nodics-axis',
-        },
-      ],
-    },
-    {
-      id: 'kickoff',
-      label: 'Kickoff',
-      eyebrow: 'Nodics Kickoff',
-      heading: 'Move from checkout to a working local reference solution.',
-      description:
-        'Follow environment setup, server composition, local acceptance, deployment qualification, and customer-owned customization guidance.',
-      href: '/docs/nodics-kickoff',
-      linkLabel: 'Begin the Kickoff journey',
-      topics: [
-        {
-          code: '01',
-          title: 'Local setup',
-          text: 'Prepare the framework, project runtime, Axis, and Nexus applications.',
-          href: '/docs/nodics-kickoff',
-        },
-        {
-          code: '02',
-          title: 'Runtime topology',
-          text: 'Understand server responsibilities, ports, dependencies, and startup order.',
-          href: '/docs/nodics-kickoff/kickoff-local-runtime',
-        },
-        {
-          code: '03',
-          title: 'Customization',
-          text: 'Extend project-owned code and data without copying framework authority.',
-          href: '/docs/nodics-kickoff/kickoff-customization',
-        },
-      ],
-    },
-    {
-      id: 'api',
-      label: 'API Reference',
-      eyebrow: 'Live OpenAPI',
-      heading: 'Explore the backend contract safely.',
-      description:
-        'Browse operations, parameters, responses, and schemas without authentication or request execution.',
-      href: '/docs/api',
-      linkLabel: 'Browse the API reference',
-      topics: [],
-    },
-  ] as const;
-  type DocsAreaId = (typeof areas)[number]['id'];
   const initialArea = (): DocsAreaId => {
     if (window.location.pathname === '/docs/api') return 'api';
     const tab = new URLSearchParams(window.location.search).get('tab');
-    return areas.some((area) => area.id === tab)
+    return documentationAreas.some((area) => area.id === tab)
       ? (tab as DocsAreaId)
       : 'framework';
   };
   const [activeArea, setActiveArea] = useState<DocsAreaId>(initialArea);
-  const selected = areas.find((area) => area.id === activeArea) ?? areas[0];
-  const selectArea = (area: (typeof areas)[number]) => {
+  const selected =
+    documentationAreas.find((area) => area.id === activeArea) ??
+    documentationAreas[0];
+  const selectArea = (area: DocsArea) => {
     setActiveArea(area.id);
     const url = new URL(window.location.href);
     url.pathname = '/docs';
@@ -414,27 +462,7 @@ function DocsLanding({ config }: { readonly config: NexusRuntimeConfig }) {
         </div>
       </section>
       <section className="docs-explorer">
-        <div
-          className="docs-tabs"
-          role="tablist"
-          aria-label="Documentation areas"
-        >
-          {areas.map((area, index) => (
-            <button
-              aria-controls={`docs-panel-${area.id}`}
-              aria-selected={activeArea === area.id}
-              className={activeArea === area.id ? 'active' : ''}
-              id={`docs-tab-${area.id}`}
-              key={area.id}
-              role="tab"
-              type="button"
-              onClick={() => selectArea(area)}
-            >
-              <span>0{index + 1}</span>
-              {area.label}
-            </button>
-          ))}
-        </div>
+        <DocsAreaTabs activeArea={activeArea} onSelect={selectArea} />
         <div
           aria-labelledby={`docs-tab-${selected.id}`}
           className="docs-tab-panel"
@@ -600,7 +628,32 @@ export function DocumentationPage({
   const maturityState = safeText(article?.properties.maturityState);
   const accessMode = safeText(article?.properties.accessMode);
   const lifecycleState = safeText(article?.properties.lifecycleState);
-  return (
+  const audienceItems = Array.isArray(article?.properties.audience)
+    ? article.properties.audience.map(safeText).filter(Boolean)
+    : [];
+  const articleSummary = safeText(article?.properties.summary);
+  const activeArea: DocsAreaId =
+    source.site === 'axisDocumentationSite'
+      ? 'axis'
+      : source.site === 'kickoffDocumentationSite'
+        ? 'kickoff'
+        : 'framework';
+  const renderNavigationLinks = (groupItems: typeof filteredItems) =>
+    [...groupItems]
+      .sort(
+        (left, right) =>
+          left.order - right.order || left.title.localeCompare(right.title),
+      )
+      .map((item) => (
+        <a
+          className={item.route === path ? 'active' : ''}
+          href={item.route}
+          key={item.route}
+        >
+          {item.title}
+        </a>
+      ));
+  const layout = (
     <div className={`docs-layout${embedded ? ' docs-layout-embedded' : ''}`}>
       <aside className="docs-sidebar">
         <a className="docs-back" href="/docs">
@@ -649,38 +702,40 @@ export function DocumentationPage({
             .map(([section, sectionEntry]) => (
               <details key={section} open>
                 <summary>{section}</summary>
-                {[...sectionEntry.groups.entries()]
-                  .sort((left, right) => {
-                    const leftOrder = Math.min(
-                      ...left[1].map((item) => item.groupOrder),
-                    );
-                    const rightOrder = Math.min(
-                      ...right[1].map((item) => item.groupOrder),
-                    );
+                {(() => {
+                  const sortedGroups = [...sectionEntry.groups.entries()].sort(
+                    (left, right) => {
+                      const leftOrder = Math.min(
+                        ...left[1].map((item) => item.groupOrder),
+                      );
+                      const rightOrder = Math.min(
+                        ...right[1].map((item) => item.groupOrder),
+                      );
+                      return (
+                        leftOrder - rightOrder ||
+                        left[0].localeCompare(right[0])
+                      );
+                    },
+                  );
+                  if (
+                    sortedGroups.length === 1 &&
+                    sortedGroups[0]?.[0] === section
+                  ) {
                     return (
-                      leftOrder - rightOrder || left[0].localeCompare(right[0])
+                      <div className="docs-nav-links">
+                        {renderNavigationLinks(sortedGroups[0][1])}
+                      </div>
                     );
-                  })
-                  .map(([group, groupItems]) => (
+                  }
+                  return sortedGroups.map(([group, groupItems]) => (
                     <details className="docs-nav-group" key={group} open>
                       <summary>{group}</summary>
-                      {groupItems
-                        .sort(
-                          (left, right) =>
-                            left.order - right.order ||
-                            left.title.localeCompare(right.title),
-                        )
-                        .map((item) => (
-                          <a
-                            className={item.route === path ? 'active' : ''}
-                            href={item.route}
-                            key={item.route}
-                          >
-                            {item.title}
-                          </a>
-                        ))}
+                      <div className="docs-nav-links">
+                        {renderNavigationLinks(groupItems)}
+                      </div>
                     </details>
-                  ))}
+                  ));
+                })()}
               </details>
             ))}
         </nav>
@@ -701,10 +756,7 @@ export function DocumentationPage({
         </nav>
         <div className="docs-meta">
           <span>{sectionTitle}</span>
-          {(Array.isArray(article?.properties.audience)
-            ? article.properties.audience.map(safeText).filter(Boolean)
-            : []
-          ).map((item) => (
+          {audienceItems.map((item) => (
             <span key={item}>{item}</span>
           ))}
           {maturityState ? <span>{maturityState}</span> : null}
@@ -712,10 +764,8 @@ export function DocumentationPage({
           {lifecycleState ? <span>{lifecycleState}</span> : null}
         </div>
         <h1>{articleTitle}</h1>
-        {safeText(article?.properties.summary) ? (
-          <p className="docs-summary">
-            {safeText(article?.properties.summary)}
-          </p>
+        {articleSummary ? (
+          <p className="docs-summary">{articleSummary}</p>
         ) : null}
         {visualRequirements.length > 0 ? (
           <div
@@ -763,6 +813,41 @@ export function DocumentationPage({
           </nav>
         ) : null}
       </article>
+    </div>
+  );
+  if (embedded) return layout;
+  return (
+    <div className="docs-detail-page">
+      <section className="docs-detail-hero">
+        <div
+          aria-label="Nodics documentation workspace"
+          className="docs-detail-hero-media"
+          role="img"
+        />
+        <div className="docs-detail-hero-shade" />
+        <div className="docs-detail-hero-copy">
+          <p className="eyebrow">Nodics Wiki</p>
+          <nav className="docs-landing-breadcrumbs" aria-label="Breadcrumb">
+            <a href="/">Home</a>
+            <span>›</span>
+            <a href="/docs">Wiki</a>
+            <span>›</span>
+            <strong>{sectionTitle}</strong>
+          </nav>
+          <h1>{sectionTitle}</h1>
+          <p>{articleSummary || articleTitle}</p>
+          <div className="docs-detail-hero-meta" aria-label="Page context">
+            <span>{articleTitle}</span>
+            {audienceItems.slice(0, 3).map((item) => (
+              <span key={item}>{item}</span>
+            ))}
+          </div>
+        </div>
+      </section>
+      <section className="docs-detail-tabs">
+        <DocsAreaTabs activeArea={activeArea} />
+      </section>
+      {layout}
     </div>
   );
 }

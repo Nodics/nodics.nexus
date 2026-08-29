@@ -79,6 +79,52 @@ describe('Editorial renderers', () => {
     );
   });
 
+  it('uses grid card layout for special and regular articles when grid view is active', () => {
+    const { container } = render(
+      <CmsComponentRenderer
+        channel="web"
+        component={component('nexus.editorial.listing', {
+          kicker: 'Insights',
+          heading: 'Latest articles',
+          defaultView: 'grid',
+          articles: [
+            {
+              code: 'special',
+              contentTypeCode: 'BLOG',
+              date: '2026-08-29',
+              special: true,
+              specialLabel: 'Featured insight',
+              title: 'Special framework story',
+              summary:
+                'A special story should still use the active grid shape.',
+              href: '/blog/special-framework-story',
+            },
+            {
+              code: 'regular-one',
+              contentTypeCode: 'BLOG',
+              date: '2026-08-28',
+              title: 'Regular framework story',
+              summary:
+                'A regular story should not be promoted into list layout.',
+              href: '/blog/regular-framework-story',
+            },
+            {
+              code: 'regular-two',
+              contentTypeCode: 'BLOG',
+              date: '2026-08-27',
+              title: 'Another framework story',
+              summary: 'Another regular story for the grid.',
+              href: '/blog/another-framework-story',
+            },
+          ],
+        })}
+      />,
+    );
+
+    expect(container.querySelectorAll('.editorial-card-grid')).toHaveLength(3);
+    expect(container.querySelectorAll('.editorial-card-list')).toHaveLength(0);
+  });
+
   it('keeps home editorial slide links separate from the view-all listing link', () => {
     render(
       <CmsComponentRenderer
@@ -218,5 +264,47 @@ describe('Editorial renderers', () => {
     );
     expect(screen.getByText('<script>alert(1)</script>')).toBeInTheDocument();
     expect(document.querySelector('script')).toBeNull();
+  });
+
+  it('keeps richer CMS detail copy when live editorial detail is shorter', async () => {
+    vi.spyOn(globalThis, 'fetch').mockResolvedValueOnce(
+      new Response(
+        JSON.stringify({
+          result: {
+            body: { blocks: [{ text: 'Short live detail.' }] },
+            contentTypeCode: 'BLOG',
+            slug: 'architecture-story',
+            summary: 'Live summary',
+            title: 'Architecture story',
+          },
+          responseCode: '200',
+        }),
+        { status: 200 },
+      ),
+    );
+    window.history.pushState({}, '', '/blog/architecture-story');
+
+    const richCmsBody =
+      'This is the richer CMS-authored detail copy that explains architecture, ownership, governance, observability, resilience, and production readiness in enough depth for a public Nodics article.';
+
+    render(
+      <NexusRuntimeConfigContext.Provider
+        value={{ config: runtimeConfig, mapping: runtimeMapping }}
+      >
+        <CmsComponentRenderer
+          channel="web"
+          component={component('nexus.editorial.detail', {
+            bodyText: richCmsBody,
+            contentTypeCode: 'BLOG',
+            summary: 'CMS summary',
+            title: 'Architecture story',
+          })}
+        />
+      </NexusRuntimeConfigContext.Provider>,
+    );
+
+    await waitFor(() => expect(globalThis.fetch).toHaveBeenCalledTimes(1));
+    expect(screen.getByText(richCmsBody)).toBeInTheDocument();
+    expect(screen.queryByText('Short live detail.')).toBeNull();
   });
 });
