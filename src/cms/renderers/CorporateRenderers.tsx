@@ -831,6 +831,7 @@ export function GithubRenderer({ component }: Props) {
     name?: unknown;
     description?: unknown;
     href?: unknown;
+    linkLabel?: unknown;
     role?: unknown;
   }>(p, 'repositories');
   return (
@@ -874,6 +875,9 @@ export function GithubRenderer({ component }: Props) {
             </div>
           </div>
         ) : null}
+        {text(p, 'repositoryIntro') ? (
+          <p className="repository-intro">{text(p, 'repositoryIntro')}</p>
+        ) : null}
         <div className="repository-grid">
           {repositories.map((repository, index) => {
             const name =
@@ -882,6 +886,10 @@ export function GithubRenderer({ component }: Props) {
               typeof repository.href === 'string'
                 ? safeHref(repository.href)
                 : undefined;
+            const linkLabel =
+              typeof repository.linkLabel === 'string'
+                ? repository.linkLabel
+                : 'View repository';
             return (
               <article key={name}>
                 <div className="repository-meta">
@@ -900,7 +908,7 @@ export function GithubRenderer({ component }: Props) {
                 </p>
                 {href ? (
                   <a href={href} target="_blank" rel="noreferrer">
-                    View repository <b aria-hidden="true">↗</b>
+                    {linkLabel} <b aria-hidden="true">↗</b>
                   </a>
                 ) : null}
               </article>

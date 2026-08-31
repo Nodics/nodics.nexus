@@ -60,4 +60,55 @@ describe('Nexus corporate homepage renderers', () => {
       screen.getByRole('link', { name: 'Read documentation' }),
     ).toHaveAttribute('href', 'https://docs.nodics.in/');
   });
+
+  it('renders GitHub organization copy without forcing repository-only CTAs', () => {
+    const github: CmsComponentContract = {
+      code: 'github',
+      typeCode: 'githubType',
+      active: true,
+      renderer: 'nexus.component.github',
+      rendererContractVersion: 1,
+      rendererChannels: ['web'],
+      rendererDeprecated: false,
+      slot: 'main',
+      index: 0,
+      components: [],
+      properties: {
+        kicker: 'GitHub and open source',
+        heading: 'Start from the Nodics GitHub organization.',
+        body: 'Use the organization as the stable entry point.',
+        organizationHref: 'https://github.com/Nodics',
+        organizationLabel: 'Open github.com/Nodics',
+        repositoryIntro:
+          'Start with the installer before browsing repository families.',
+        repositories: [
+          {
+            name: 'nodics.installer',
+            role: 'Local setup entry point',
+            description:
+              'Bootstrap repository for initializing a local Nodics workspace.',
+            href: 'https://github.com/Nodics/nodics.installer',
+            linkLabel: 'Start local setup',
+          },
+        ],
+      },
+    };
+
+    render(<CmsComponentRenderer component={github} channel="web" />);
+
+    expect(
+      screen.getByRole('heading', {
+        name: 'Start from the Nodics GitHub organization.',
+      }),
+    ).toBeVisible();
+    expect(
+      screen.getByText(
+        'Start with the installer before browsing repository families.',
+      ),
+    ).toBeVisible();
+    expect(
+      screen.getByRole('link', { name: /Start local setup/i }),
+    ).toHaveAttribute('href', 'https://github.com/Nodics/nodics.installer');
+    expect(screen.queryByRole('link', { name: /View repository/i })).toBeNull();
+  });
 });

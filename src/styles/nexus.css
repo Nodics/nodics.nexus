@@ -3211,10 +3211,19 @@ a {
   color: var(--ink);
   background: var(--gold);
 }
+.repository-intro {
+  max-width: 760px;
+  margin: 2.4rem 0 0;
+  padding-left: 1rem;
+  border-left: 3px solid var(--gold);
+  color: #c9ced3;
+  font-size: clamp(0.92rem, 1.05vw, 1rem);
+  line-height: 1.65;
+}
 .repository-grid {
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: clamp(0.75rem, 1.4vw, 1rem);
-  margin-top: 2.5rem;
+  margin-top: 1.5rem;
   border: 0;
   background: transparent;
 }
