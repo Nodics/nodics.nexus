@@ -5501,7 +5501,7 @@ a {
   border-bottom: 1px solid var(--line);
   padding-bottom: 1.5rem;
 }
-.api-reference-heading h2 {
+.api-reference-heading h1 {
   margin: 0.7rem 0 0;
   font-size: clamp(2.2rem, 4vw, 4rem);
   letter-spacing: -0.04em;

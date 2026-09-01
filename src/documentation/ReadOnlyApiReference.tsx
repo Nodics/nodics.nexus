@@ -267,9 +267,9 @@ export function ReadOnlyApiReference({
       <div className="api-reference-heading">
         <div>
           <p className="eyebrow">Live backend contract</p>
-          <h2>
+          <h1>
             {state.status === 'ready' ? state.title : 'Nodics API Reference'}
-          </h2>
+          </h1>
         </div>
         <span>View only</span>
       </div>
@@ -296,7 +296,7 @@ export function ReadOnlyApiReference({
               <span>Search API reference</span>
               <input
                 onChange={(event) => setQuery(event.target.value)}
-                placeholder="Search operation, path, method, or module"
+                placeholder="Search APIs"
                 type="search"
                 value={query}
               />

@@ -353,7 +353,7 @@ export function DocumentationPage({
       });
     return () => controller.abort();
   }, [config, path, source]);
-  if (path === '/docs/api')
+  if (path === '/docs/api' || path === '/docs/swaggers')
     return (
       <main className="docs-api-page">
         <ReadOnlyApiReference config={config} />
