@@ -1,5 +1,14 @@
 import mermaid from 'mermaid';
-import { useEffect, useId, useMemo, useState, type ReactNode } from 'react';
+import {
+  useCallback,
+  useEffect,
+  useId,
+  useMemo,
+  useRef,
+  useState,
+  type CSSProperties,
+  type ReactNode,
+} from 'react';
 import { CmsPageDeliveryError, resolveCmsPage } from '../cms/cmsClient';
 import type {
   CmsComponentContract,
@@ -8,152 +17,49 @@ import type {
 import type { NexusRuntimeConfig } from '../runtime/runtimeConfig';
 import { ReadOnlyApiReference } from './ReadOnlyApiReference';
 
-const sources = [
-  {
-    prefix: '/docs/framework/process',
-    site: 'nodicsDocumentationSite',
-    title: 'Nodics Framework',
-    description:
-      'Framework architecture, modules, contracts, security, and extension guidance.',
-    href: '/docs/framework',
-  },
-  {
-    prefix: '/docs/framework',
-    site: 'nodicsDocumentationSite',
-    title: 'Nodics Framework',
-    description:
-      'Framework architecture, modules, contracts, security, and extension guidance.',
-    href: '/docs/framework',
-  },
-  {
-    prefix: '/docs/nodics-axis',
-    site: 'axisDocumentationSite',
-    title: 'Nodics Axis',
-    description:
-      'BackOffice journeys, administration, content operations, and governance.',
-    href: '/docs/nodics-axis',
-  },
-  {
-    prefix: '/docs/nodics-kickoff',
-    site: 'kickoffDocumentationSite',
-    title: 'Nodics Kickoff',
-    description:
-      'Local setup, reference runtime composition, and customer customization.',
-    href: '/docs/nodics-kickoff',
-  },
-] as const;
+interface DocumentationSource {
+  readonly site: string;
+  readonly title: string;
+}
 
-const documentationAreas = [
-  {
-    id: 'framework',
-    label: 'Framework',
-    eyebrow: 'Nodics Framework',
-    heading: 'Understand the foundation before composing the journey.',
-    description:
-      'Explore architecture, runtime contracts, modular ownership, security, content, commerce, and business automation across the unified Nodics framework.',
-    href: '/docs/framework',
-    linkLabel: 'Start with the Framework overview',
-    topics: [
-      {
-        code: '01',
-        title: 'Architecture',
-        text: 'Core principles, module boundaries, runtime composition, and extension contracts.',
-        href: '/docs/framework',
-      },
-      {
-        code: '02',
-        title: 'Process & Automation',
-        text: 'Workflow definitions, runtime instances, tasks, recovery, scheduling, and visual design.',
-        href: '/docs/framework/process',
-      },
-      {
-        code: '03',
-        title: 'Capability guides',
-        text: 'Implementation guidance for platform, content, commerce, security, and operations.',
-        href: '/docs/framework',
-      },
-    ],
-  },
-  {
-    id: 'axis',
-    label: 'Axis',
-    eyebrow: 'Nodics Axis',
-    heading: 'Operate the framework through one governed workspace.',
-    description:
-      'Learn the BackOffice navigation, administrative journeys, content operations, schema tools, governance, and AI-assisted operational workflows.',
-    href: '/docs/nodics-axis',
-    linkLabel: 'Open the Axis guide',
-    topics: [
-      {
-        code: '01',
-        title: 'Workspace',
-        text: 'Understand navigation, perspectives, capability discovery, and contextual help.',
-        href: '/docs/nodics-axis',
-      },
-      {
-        code: '02',
-        title: 'Administration',
-        text: 'Operate content, media, schemas, imports, configurations, and business capabilities.',
-        href: '/docs/nodics-axis',
-      },
-      {
-        code: '03',
-        title: 'Governed AI',
-        text: 'Use AI assistance while preserving permissions, human authority, and audit evidence.',
-        href: '/docs/nodics-axis',
-      },
-    ],
-  },
-  {
-    id: 'kickoff',
-    label: 'Kickoff',
-    eyebrow: 'Nodics Kickoff',
-    heading: 'Move from checkout to a working local reference solution.',
-    description:
-      'Follow environment setup, server composition, local acceptance, deployment qualification, and customer-owned customization guidance.',
-    href: '/docs/nodics-kickoff',
-    linkLabel: 'Begin the Kickoff journey',
-    topics: [
-      {
-        code: '01',
-        title: 'Local setup',
-        text: 'Prepare the framework, project runtime, Axis, and Nexus applications.',
-        href: '/docs/nodics-kickoff',
-      },
-      {
-        code: '02',
-        title: 'Runtime topology',
-        text: 'Understand server responsibilities, ports, dependencies, and startup order.',
-        href: '/docs/nodics-kickoff/kickoff-local-runtime',
-      },
-      {
-        code: '03',
-        title: 'Customization',
-        text: 'Extend project-owned code and data without copying framework authority.',
-        href: '/docs/nodics-kickoff/kickoff-customization',
-      },
-    ],
-  },
-  {
-    id: 'api',
-    label: 'Swagger',
-    eyebrow: 'Live OpenAPI',
-    heading: 'Explore the backend contract safely.',
-    description:
-      'Browse operations, parameters, responses, and schemas without authentication or request execution.',
-    href: '/docs/api',
-    linkLabel: 'Browse the API reference',
-    topics: [],
-  },
-] as const;
-
-type DocsArea = (typeof documentationAreas)[number];
-type DocsAreaId = DocsArea['id'];
+function documentationSourceForPath(
+  path: string,
+): DocumentationSource | undefined {
+  if (path === '/docs' || path.startsWith('/docs/framework'))
+    return { site: 'nodicsDocumentationSite', title: 'Nodics Documentation' };
+  if (path.startsWith('/docs/nodics-axis'))
+    return { site: 'axisDocumentationSite', title: 'Nodics Axis' };
+  if (path.startsWith('/docs/nodics-kickoff'))
+    return { site: 'kickoffDocumentationSite', title: 'Nodics Kickoff' };
+  return undefined;
+}
 
 type State =
   | { status: 'loading' }
   | { status: 'ready'; page: CmsResolvedPageContract }
   | { status: 'failed'; message: string };
+
+const navigationWidthStorageKey = 'nexus.documentation.navigationWidth';
+const defaultNavigationWidth = 320;
+const minNavigationWidth = 260;
+const maxNavigationWidth = 560;
+
+function clampNavigationWidth(width: number): number {
+  return Math.min(
+    maxNavigationWidth,
+    Math.max(minNavigationWidth, Math.round(width)),
+  );
+}
+
+function initialNavigationWidth(): number {
+  if (typeof window === 'undefined') return defaultNavigationWidth;
+  const storedValue = window.localStorage.getItem(navigationWidthStorageKey);
+  if (!storedValue) return defaultNavigationWidth;
+  const stored = Number(storedValue);
+  return Number.isFinite(stored)
+    ? clampNavigationWidth(stored)
+    : defaultNavigationWidth;
+}
 
 function documentationFailureMessage(error: unknown): string {
   const isNotFound =
@@ -373,116 +279,6 @@ function documentationLink(value: unknown) {
   return title && route.startsWith('/docs') ? { title, route } : undefined;
 }
 
-function DocsAreaTabs({
-  activeArea,
-  onSelect,
-}: {
-  readonly activeArea: DocsAreaId;
-  readonly onSelect?: (area: DocsArea) => void;
-}) {
-  return (
-    <div className="docs-tabs" role="tablist" aria-label="Documentation areas">
-      {documentationAreas.map((area, index) =>
-        onSelect ? (
-          <button
-            aria-controls={`docs-panel-${area.id}`}
-            aria-selected={activeArea === area.id}
-            className={activeArea === area.id ? 'active' : ''}
-            id={`docs-tab-${area.id}`}
-            key={area.id}
-            role="tab"
-            type="button"
-            onClick={() => onSelect(area)}
-          >
-            <span>0{index + 1}</span>
-            {area.label}
-          </button>
-        ) : (
-          <a
-            aria-current={activeArea === area.id ? 'page' : undefined}
-            aria-selected={activeArea === area.id}
-            className={activeArea === area.id ? 'active' : ''}
-            href={area.href}
-            id={`docs-tab-${area.id}`}
-            key={area.id}
-            role="tab"
-          >
-            <span>0{index + 1}</span>
-            {area.label}
-          </a>
-        ),
-      )}
-    </div>
-  );
-}
-
-function DocsLanding({ config }: { readonly config: NexusRuntimeConfig }) {
-  const initialArea = (): DocsAreaId => {
-    if (window.location.pathname === '/docs/api') return 'api';
-    const tab = new URLSearchParams(window.location.search).get('tab');
-    return documentationAreas.some((area) => area.id === tab)
-      ? (tab as DocsAreaId)
-      : 'framework';
-  };
-  const [activeArea, setActiveArea] = useState<DocsAreaId>(initialArea);
-  const selected =
-    documentationAreas.find((area) => area.id === activeArea) ??
-    documentationAreas[0];
-  const selectArea = (area: DocsArea) => {
-    setActiveArea(area.id);
-    const url = new URL(window.location.href);
-    url.pathname = '/docs';
-    if (area.id === 'framework') url.searchParams.delete('tab');
-    else url.searchParams.set('tab', area.id);
-    window.history.replaceState({}, '', url);
-  };
-  return (
-    <div className="docs-landing">
-      <section className="docs-landing-hero">
-        <div
-          aria-label="Nodics enterprise architecture and documentation workspace"
-          className="docs-landing-hero-media"
-          role="img"
-        />
-        <div className="docs-landing-hero-shade" />
-        <div className="docs-landing-hero-copy">
-          <p className="eyebrow">Nodics Wiki</p>
-          <h1>Documentation</h1>
-          <nav className="docs-landing-breadcrumbs" aria-label="Breadcrumb">
-            <a href="/">Home</a>
-            <span>›</span>
-            <strong>Wiki</strong>
-          </nav>
-          <p>
-            Build, operate, and evolve Nodics through one connected knowledge
-            experience.
-          </p>
-        </div>
-      </section>
-      <section className="docs-explorer">
-        <DocsAreaTabs activeArea={activeArea} onSelect={selectArea} />
-        <div
-          aria-labelledby={`docs-tab-${selected.id}`}
-          className="docs-tab-panel"
-          id={`docs-panel-${selected.id}`}
-          role="tabpanel"
-        >
-          {selected.id === 'api' ? (
-            <ReadOnlyApiReference config={config} />
-          ) : (
-            <DocumentationPage
-              config={config}
-              embedded
-              key={selected.id}
-              path={selected.href}
-            />
-          )}
-        </div>
-      </section>
-    </div>
-  );
-}
-
 export function DocumentationPage({
   config,
   embedded = false,
@@ -492,16 +288,48 @@ export function DocumentationPage({
   readonly embedded?: boolean;
   readonly path: string;
 }) {
-  const source = useMemo(
-    () =>
-      sources.find(
-        (item) => path === item.prefix || path.startsWith(`${item.prefix}/`),
-      ),
-    [path],
-  );
+  const source = useMemo(() => documentationSourceForPath(path), [path]);
   const [state, setState] = useState<State>({ status: 'loading' });
   const [query, setQuery] = useState('');
   const [audience, setAudience] = useState('');
+  const [navigationWidth, setNavigationWidth] = useState(
+    initialNavigationWidth,
+  );
+  const resizeStartRef = useRef<Readonly<{ x: number; width: number }> | null>(
+    null,
+  );
+  const stopResizeRef = useRef<() => void>(() => undefined);
+
+  const handleNavigationResize = useCallback((event: PointerEvent) => {
+    if (!resizeStartRef.current) return;
+    setNavigationWidth(
+      clampNavigationWidth(
+        resizeStartRef.current.width + event.clientX - resizeStartRef.current.x,
+      ),
+    );
+  }, []);
+
+  const stopNavigationResize = useCallback(() => {
+    resizeStartRef.current = null;
+    document.removeEventListener('pointermove', handleNavigationResize);
+    document.removeEventListener('pointerup', stopResizeRef.current);
+    document.body.style.cursor = '';
+    document.body.style.userSelect = '';
+  }, [handleNavigationResize]);
+
+  useEffect(() => {
+    window.localStorage.setItem(
+      navigationWidthStorageKey,
+      String(navigationWidth),
+    );
+  }, [navigationWidth]);
+
+  useEffect(() => {
+    stopResizeRef.current = stopNavigationResize;
+  }, [stopNavigationResize]);
+
+  useEffect(() => () => stopResizeRef.current(), []);
+
   useEffect(() => {
     if (!source) return;
     const controller = new AbortController();
@@ -525,8 +353,12 @@ export function DocumentationPage({
       });
     return () => controller.abort();
   }, [config, path, source]);
-  if (path === '/docs' || path === '/docs/api')
-    return <DocsLanding config={config} />;
+  if (path === '/docs/api')
+    return (
+      <main className="docs-api-page">
+        <ReadOnlyApiReference config={config} />
+      </main>
+    );
   if (!source)
     return (
       <section className="page-state">
@@ -588,19 +420,15 @@ export function DocumentationPage({
   });
   const groupedItems = filteredItems.reduce((result, item) => {
     const section = item.section || item.category || 'Documentation';
-    const group = item.group || section;
     const sectionEntry = result.get(section) ?? {
       order: item.sectionOrder,
-      groups: new Map<string, typeof filteredItems>(),
+      items: [] as typeof filteredItems,
     };
     sectionEntry.order = Math.min(sectionEntry.order, item.sectionOrder);
-    sectionEntry.groups.set(group, [
-      ...(sectionEntry.groups.get(group) ?? []),
-      item,
-    ]);
+    sectionEntry.items.push(item);
     result.set(section, sectionEntry);
     return result;
-  }, new Map<string, { order: number; groups: Map<string, typeof filteredItems> }>());
+  }, new Map<string, { order: number; items: typeof filteredItems }>());
   const blocks =
     article && Array.isArray(article.properties.blocks)
       ? article.properties.blocks
@@ -630,12 +458,6 @@ export function DocumentationPage({
     ? article.properties.audience.map(safeText).filter(Boolean)
     : [];
   const articleSummary = safeText(article?.properties.summary);
-  const activeArea: DocsAreaId =
-    source.site === 'axisDocumentationSite'
-      ? 'axis'
-      : source.site === 'kickoffDocumentationSite'
-        ? 'kickoff'
-        : 'framework';
   const renderNavigationLinks = (groupItems: typeof filteredItems) =>
     [...groupItems]
       .sort(
@@ -652,7 +474,14 @@ export function DocumentationPage({
         </a>
       ));
   const layout = (
-    <div className={`docs-layout${embedded ? ' docs-layout-embedded' : ''}`}>
+    <div
+      className={`docs-layout${embedded ? ' docs-layout-embedded' : ''}`}
+      style={
+        {
+          '--docs-navigation-width': `${navigationWidth}px`,
+        } as CSSProperties
+      }
+    >
       <aside className="docs-sidebar">
         <a className="docs-back" href="/docs">
           ← Wiki home
@@ -700,40 +529,9 @@ export function DocumentationPage({
             .map(([section, sectionEntry]) => (
               <details key={section} open>
                 <summary>{section}</summary>
-                {(() => {
-                  const sortedGroups = [...sectionEntry.groups.entries()].sort(
-                    (left, right) => {
-                      const leftOrder = Math.min(
-                        ...left[1].map((item) => item.groupOrder),
-                      );
-                      const rightOrder = Math.min(
-                        ...right[1].map((item) => item.groupOrder),
-                      );
-                      return (
-                        leftOrder - rightOrder ||
-                        left[0].localeCompare(right[0])
-                      );
-                    },
-                  );
-                  if (
-                    sortedGroups.length === 1 &&
-                    sortedGroups[0]?.[0] === section
-                  ) {
-                    return (
-                      <div className="docs-nav-links">
-                        {renderNavigationLinks(sortedGroups[0][1])}
-                      </div>
-                    );
-                  }
-                  return sortedGroups.map(([group, groupItems]) => (
-                    <details className="docs-nav-group" key={group} open>
-                      <summary>{group}</summary>
-                      <div className="docs-nav-links">
-                        {renderNavigationLinks(groupItems)}
-                      </div>
-                    </details>
-                  ));
-                })()}
+                <div className="docs-nav-links">
+                  {renderNavigationLinks(sectionEntry.items)}
+                </div>
               </details>
             ))}
         </nav>
@@ -744,6 +542,27 @@ export function DocumentationPage({
           </p>
         ) : null}
       </aside>
+      <div
+        aria-label="Resize documentation navigation"
+        aria-valuemax={maxNavigationWidth}
+        aria-valuemin={minNavigationWidth}
+        aria-valuenow={navigationWidth}
+        className="docs-layout-resizer"
+        onDoubleClick={() => setNavigationWidth(defaultNavigationWidth)}
+        onPointerDown={(event) => {
+          event.preventDefault();
+          resizeStartRef.current = {
+            x: event.clientX,
+            width: navigationWidth,
+          };
+          document.body.style.cursor = 'col-resize';
+          document.body.style.userSelect = 'none';
+          document.addEventListener('pointermove', handleNavigationResize);
+          document.addEventListener('pointerup', stopResizeRef.current);
+        }}
+        role="separator"
+        tabIndex={0}
+      />
       <article className="docs-article">
         <nav className="docs-breadcrumbs" aria-label="Documentation breadcrumb">
           <a href="/docs">Wiki</a>
@@ -841,9 +660,6 @@ export function DocumentationPage({
             ))}
           </div>
         </div>
-      </section>
-      <section className="docs-detail-tabs">
-        <DocsAreaTabs activeArea={activeArea} />
       </section>
       {layout}
     </div>

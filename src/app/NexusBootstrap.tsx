@@ -6,7 +6,6 @@ import {
   type NexusRuntimeConfig,
 } from '../runtime/runtimeConfig';
 import { CmsPage } from './CmsPage';
-import { DEFAULT_NEXUS_SITE_SHELL, SiteShell } from './SiteShell';
 
 const DocumentationPage = lazy(() =>
   import('../documentation/DocumentationPage').then((module) => ({
@@ -54,20 +53,15 @@ export function NexusBootstrap() {
   const path = window.location.pathname.replace(/\/+$/u, '') || '/';
   if (path === '/docs' || path.startsWith('/docs/'))
     return (
-      <SiteShell
-        axisBaseUrl={state.config.axisBaseUrl}
-        shell={DEFAULT_NEXUS_SITE_SHELL}
+      <Suspense
+        fallback={
+          <main className="page-state" aria-live="polite">
+            Loading Nexus documentation.
+          </main>
+        }
       >
-        <Suspense
-          fallback={
-            <main className="page-state" aria-live="polite">
-              Loading Nexus documentation.
-            </main>
-          }
-        >
-          <DocumentationPage config={state.config} path={path} />
-        </Suspense>
-      </SiteShell>
+        <DocumentationPage config={state.config} path={path} />
+      </Suspense>
     );
   return <CmsPage config={state.config} mapping={state.mapping} path={path} />;
 }

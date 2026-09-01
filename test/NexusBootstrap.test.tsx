@@ -1,4 +1,4 @@
-import { render, screen, within } from '@testing-library/react';
+import { render, screen } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { NexusBootstrap } from '../src/app/NexusBootstrap';
 import {
@@ -51,7 +51,7 @@ afterEach(() => {
 });
 
 describe('Nexus bootstrap routing', () => {
-  it('renders documentation routes inside the Nexus site shell', async () => {
+  it('renders documentation routes without the hardcoded Nexus site shell', async () => {
     window.history.pushState({}, '', '/docs/framework');
     vi.mocked(loadNexusRuntimeConfig).mockResolvedValueOnce(config);
     vi.mocked(resolveHostMapping).mockReturnValueOnce(mapping);
@@ -61,12 +61,9 @@ describe('Nexus bootstrap routing', () => {
     await screen.findByRole('heading', {
       name: 'Documentation for /docs/framework',
     });
-    const primaryNavigation = screen.getByRole('navigation', {
-      name: 'Primary navigation',
-    });
     expect(
-      within(primaryNavigation).getByRole('link', { name: 'Docs' }),
-    ).toHaveAttribute('aria-current', 'page');
-    expect(screen.getByRole('contentinfo')).toBeInTheDocument();
+      screen.queryByRole('navigation', { name: 'Primary navigation' }),
+    ).not.toBeInTheDocument();
+    expect(screen.queryByRole('contentinfo')).not.toBeInTheDocument();
   });
 });
