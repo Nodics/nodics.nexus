@@ -339,10 +339,8 @@ function navigationItems(component: CmsComponentContract) {
     const section = category || 'Documentation';
     const sectionOrder =
       typeof candidate.sectionOrder === 'number' ? candidate.sectionOrder : 100;
-    const group =
-      safeText(candidate.groupTitle) || safeText(candidate.group) || section;
-    const groupOrder =
-      typeof candidate.groupOrder === 'number' ? candidate.groupOrder : 100;
+    const group = section;
+    const groupOrder = sectionOrder;
     const audience = Array.isArray(candidate.audience)
       ? candidate.audience.map(safeText).filter(Boolean)
       : [];
