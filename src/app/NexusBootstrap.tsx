@@ -6,6 +6,7 @@ import {
   type NexusRuntimeConfig,
 } from '../runtime/runtimeConfig';
 import { CmsPage } from './CmsPage';
+import { PublishedSiteShell } from './PublishedSiteShell';
 
 const DocumentationPage = lazy(() =>
   import('../documentation/DocumentationPage').then((module) => ({
@@ -60,7 +61,9 @@ export function NexusBootstrap() {
           </main>
         }
       >
-        <DocumentationPage config={state.config} path={path} />
+        <PublishedSiteShell config={state.config} mapping={state.mapping}>
+          <DocumentationPage config={state.config} path={path} />
+        </PublishedSiteShell>
       </Suspense>
     );
   return <CmsPage config={state.config} mapping={state.mapping} path={path} />;

@@ -26,12 +26,22 @@ import {
   EditorialTaxonomyRenderer,
 } from './renderers/EditorialRenderers';
 
+import {
+  ProductPortfolioRenderer,
+  ProductStoryRenderer,
+} from './renderers/ProductRenderers';
+
+import { SolutionsRenderer } from './renderers/SolutionRenderers';
+
 type Renderer = ComponentType<{ readonly component: CmsComponentContract }>;
 const registry: Readonly<Record<string, Renderer>> = Object.freeze({
   'nexus.component.banner-carousel': BannerCarouselRenderer,
   'nexus.component.banner-slide': BannerSlideRenderer,
   'nexus.component.page-hero': PageHeroRenderer,
   'nexus.hero': PageHeroRenderer,
+  'nexus.component.product-portfolio': ProductPortfolioRenderer,
+  'nexus.component.product-story': ProductStoryRenderer,
+  'nexus.component.solutions': SolutionsRenderer,
   'nexus.component.content': ContentRenderer,
   'nexus.contentSection': ContentRenderer,
   'nexus.component.cards': CardsRenderer,

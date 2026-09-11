@@ -5218,7 +5218,7 @@ a {
   padding-top: 0;
 }
 .docs-layout {
-  padding: clamp(8rem, 12vw, 11rem) max(5vw, calc((100vw - 1280px) / 2));
+  padding: clamp(8rem, 12vw, 11rem) max(1.25rem, calc((100vw - 1240px) / 2));
 }
 .docs-detail-page {
   min-height: 100vh;
@@ -5226,13 +5226,6 @@ a {
 }
 .docs-detail-page .docs-layout {
   padding-top: clamp(2.5rem, 5vw, 4rem);
-}
-.site-header.docs-context {
-  background: rgb(24 26 29 / 96%);
-  box-shadow: inset 0 -1px 0 rgb(245 196 0 / 65%);
-}
-.site-header.docs-landing-context:not(.is-scrolled) {
-  background: transparent;
 }
 .docs-landing-hero {
   position: relative;
@@ -5282,57 +5275,12 @@ a {
   inset: 0;
   background: linear-gradient(0deg, rgb(10 19 38 / 82%), rgb(10 19 38 / 68%));
 }
-.docs-detail-hero {
-  position: relative;
-  display: flex;
-  min-height: clamp(22rem, 38vw, 31rem);
-  align-items: center;
-  overflow: hidden;
-  background: #111418;
-  color: #fff;
-}
-.docs-detail-hero-media {
-  position: absolute;
-  inset: 0;
-  width: 100%;
-  height: 100%;
-  background:
-    linear-gradient(90deg, rgb(12 18 27 / 86%), rgb(12 18 27 / 42%)),
-    url('/assets/nodics/docs-hero.png') center / cover no-repeat,
-    radial-gradient(circle at 18% 22%, rgb(245 196 0 / 24%), transparent 25rem),
-    linear-gradient(135deg, #111418 0%, #1c2633 45%, #0f151f 100%);
-}
-.docs-detail-hero-media::after {
-  position: absolute;
-  inset: 0;
-  background-image:
-    linear-gradient(rgb(255 255 255 / 9%) 1px, transparent 1px),
-    linear-gradient(90deg, rgb(255 255 255 / 9%) 1px, transparent 1px);
-  background-size: 42px 42px;
-  content: '';
-  mask-image: linear-gradient(90deg, #000, #000 72%, transparent);
-}
-.docs-detail-hero-shade {
-  position: absolute;
-  inset: 0;
-  background:
-    linear-gradient(0deg, rgb(10 19 38 / 86%), rgb(10 19 38 / 36%)),
-    linear-gradient(90deg, rgb(10 19 38 / 52%), transparent);
-}
 .docs-landing-hero-copy {
   position: relative;
   z-index: 1;
   width: min(820px, 90vw);
   margin: 0 auto;
   padding: 7rem 1.5rem 4rem;
-  text-align: center;
-}
-.docs-detail-hero-copy {
-  position: relative;
-  z-index: 1;
-  width: min(880px, 90vw);
-  margin: 0 auto;
-  padding: clamp(7rem, 12vw, 9rem) 1.5rem clamp(3rem, 6vw, 4.5rem);
   text-align: center;
 }
 .docs-landing-hero-copy h1 {
@@ -5347,39 +5295,6 @@ a {
   color: rgb(255 255 255 / 75%);
   font-size: var(--secondary-hero-body-size);
   line-height: 1.7;
-}
-.docs-detail-hero-copy h1 {
-  max-width: 780px;
-  margin: 0.95rem auto 1rem;
-  font-size: var(--secondary-hero-title-size);
-  line-height: 0.98;
-}
-.docs-detail-hero-copy > p:not(.eyebrow) {
-  max-width: 760px;
-  margin-right: auto;
-  margin-left: auto;
-  color: rgb(255 255 255 / 78%);
-  font-size: var(--secondary-hero-body-size);
-  line-height: 1.65;
-}
-.docs-detail-hero-copy .docs-landing-breadcrumbs {
-  justify-content: center;
-}
-.docs-detail-hero-meta {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.5rem;
-  justify-content: center;
-  margin-top: 1.35rem;
-}
-.docs-detail-hero-meta span {
-  padding: 0.45rem 0.65rem;
-  border: 1px solid rgb(255 255 255 / 22%);
-  border-radius: 99px;
-  background: rgb(255 255 255 / 8%);
-  color: rgb(255 255 255 / 78%);
-  font-size: 0.72rem;
-  font-weight: 800;
 }
 .docs-landing-breadcrumbs {
   display: flex;
@@ -5865,8 +5780,7 @@ a {
     minmax(0, 1fr);
   gap: 0;
   align-items: stretch;
-  max-width: 1280px;
-  margin-inline: auto;
+  width: 100%;
 }
 .docs-sidebar {
   position: relative;
@@ -6071,6 +5985,9 @@ a {
 }
 .docs-sidebar nav a.active::before {
   background: var(--gold);
+}
+.docs-article [id] {
+  scroll-margin-top: 90px;
 }
 .docs-article {
   min-width: 0;
@@ -6304,6 +6221,38 @@ a {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }
+/* Give both documentation panels a shared, extended reading area. */
+@media (min-width: 851px) {
+  .docs-layout,
+  .docs-detail-page .docs-layout {
+    height: calc(200dvh - 164px);
+    min-height: 0;
+    grid-template-rows: minmax(0, 1fr);
+    padding-block: 1.5rem;
+    overflow: hidden;
+    scroll-margin-top: 82px;
+  }
+
+  .docs-layout.docs-layout-embedded {
+    padding: 0;
+  }
+
+  .docs-sidebar,
+  .docs-article {
+    height: 100%;
+    min-height: 0;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    scrollbar-gutter: stable;
+    scroll-padding-block: 1rem;
+  }
+
+  .docs-sidebar:focus-visible,
+  .docs-article:focus-visible {
+    outline-offset: -3px;
+  }
+}
+
 @media (max-width: 850px) {
   .docs-source-grid,
   .docs-layout,
@@ -6311,6 +6260,9 @@ a {
   .docs-tab-intro,
   .docs-topic-grid {
     grid-template-columns: 1fr;
+  }
+  .docs-layout {
+    row-gap: 1.5rem;
   }
   .docs-layout-resizer {
     display: none;
@@ -6355,7 +6307,10 @@ a {
   .docs-sidebar {
     position: relative;
     top: auto;
-    max-height: none;
+    max-height: min(60dvh, 32rem);
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    scrollbar-gutter: stable;
   }
   .docs-article {
     padding: 1.5rem;
@@ -7329,3 +7284,12 @@ a {
     grid-template-columns: 1fr;
   }
 }
+
+.docs-image img {
+  display: block;
+  max-width: 100%;
+  height: auto;
+  margin-inline: auto;
+}
+
+/* Home solution directions complement the product portfolio. */

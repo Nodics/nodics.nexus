@@ -82,24 +82,49 @@ function safeText(value: unknown): string {
   return typeof value === 'string' ? value : '';
 }
 
+function safeDocumentationUrl(
+  value: string,
+  image = false,
+): string | undefined {
+  if (/^\/(?!\/)/u.test(value) && !/[\\\s]/u.test(value)) return value;
+  if (!image && /^#[a-zA-Z0-9_-]+$/u.test(value)) return value;
+  if (
+    image &&
+    /^data:image\/(?:png|jpeg|webp);base64,[a-zA-Z0-9+/=]+$/u.test(value)
+  )
+    return value;
+  try {
+    const url = new URL(value);
+    if (url.protocol === 'https:' || url.protocol === 'http:') return url.href;
+  } catch {
+    /* Unknown relative source references remain readable text. */
+  }
+  return undefined;
+}
+
 function inlineText(value: string): ReactNode {
-  const parts = value.split(/(`[^`]+`|\*\*[^*]+\*\*)/u);
+  const parts = value.split(/(`[^`]+`|\*\*[^*]+\*\*|\[[^\]]+\]\([^)]+\))/u);
   return parts.map((part, index) => {
     if (part.startsWith('`') && part.endsWith('`'))
       return <code key={index}>{part.slice(1, -1)}</code>;
     if (part.startsWith('**') && part.endsWith('**'))
       return <strong key={index}>{part.slice(2, -2)}</strong>;
+    const link = /^\[([^\]]+)\]\(([^)]+)\)$/u.exec(part);
+    if (link) {
+      const href = safeDocumentationUrl(link[2]);
+      return href ? (
+        <a key={index} href={href}>
+          {link[1]}
+        </a>
+      ) : (
+        link[1]
+      );
+    }
     return part;
   });
 }
 
 const MAX_DIAGRAM_LENGTH = 20_000;
-
-function stringList(value: unknown, limit = 50): readonly string[] {
-  return Array.isArray(value)
-    ? value.slice(0, limit).map(safeText).filter(Boolean)
-    : [];
-}
 
 function DocumentationDiagram({
   block,
@@ -190,6 +215,21 @@ function DocumentationBlock({
       </pre>
     );
   if (kind === 'diagram') return <DocumentationDiagram block={block} />;
+  if (kind === 'image') {
+    const source = safeDocumentationUrl(safeText(block.source), true);
+    const alt =
+      safeText(block.alt) ||
+      safeText(block.title) ||
+      'Documentation illustration';
+    return source ? (
+      <figure className="docs-image">
+        <img src={source} alt={alt} loading="lazy" />
+        {block.caption ? (
+          <figcaption>{inlineText(safeText(block.caption))}</figcaption>
+        ) : null}
+      </figure>
+    ) : null;
+  }
   if (kind === 'unordered-list' || kind === 'ordered-list') {
     const items = Array.isArray(block.items) ? block.items.map(safeText) : [];
     const Tag = kind === 'ordered-list' ? 'ol' : 'ul';
@@ -212,7 +252,7 @@ function DocumentationBlock({
           <thead>
             <tr>
               {headers.map((item) => (
-                <th key={item}>{item}</th>
+                <th key={item}>{inlineText(item)}</th>
               ))}
             </tr>
           </thead>
@@ -290,6 +330,40 @@ export function DocumentationPage({
 }) {
   const source = useMemo(() => documentationSourceForPath(path), [path]);
   const [state, setState] = useState<State>({ status: 'loading' });
+  const articleScrollRef = useRef<HTMLElement>(null);
+  const layoutRef = useRef<HTMLDivElement>(null);
+  const scrollToArticleAnchor = useCallback((hash: string) => {
+    if (window.innerWidth <= 850 || !hash.startsWith('#')) return false;
+    let anchor: string;
+    try {
+      anchor = decodeURIComponent(hash.slice(1));
+    } catch {
+      return false;
+    }
+    const panel = articleScrollRef.current;
+    const target = document.getElementById(anchor);
+    if (!panel || !target || !panel.contains(target)) return false;
+    layoutRef.current?.scrollIntoView({ block: 'start', behavior: 'instant' });
+    panel.scrollTop +=
+      target.getBoundingClientRect().top -
+      panel.getBoundingClientRect().top -
+      16;
+    return true;
+  }, []);
+
+  useEffect(() => {
+    if (state.status === 'ready' && window.location.hash)
+      scrollToArticleAnchor(window.location.hash);
+  }, [path, state.status, scrollToArticleAnchor]);
+
+  useEffect(() => {
+    const followHash = () => {
+      if (window.location.hash) scrollToArticleAnchor(window.location.hash);
+      else if (articleScrollRef.current) articleScrollRef.current.scrollTop = 0;
+    };
+    window.addEventListener('hashchange', followHash);
+    return () => window.removeEventListener('hashchange', followHash);
+  }, [scrollToArticleAnchor]);
   const [query, setQuery] = useState('');
   const [audience, setAudience] = useState('');
   const [navigationWidth, setNavigationWidth] = useState(
@@ -355,9 +429,9 @@ export function DocumentationPage({
   }, [config, path, source]);
   if (path === '/docs/api' || path === '/docs/swaggers')
     return (
-      <main className="docs-api-page">
+      <div className="docs-api-page">
         <ReadOnlyApiReference config={config} />
-      </main>
+      </div>
     );
   if (!source)
     return (
@@ -450,7 +524,6 @@ export function DocumentationPage({
   const sectionTitle =
     safeText(article?.properties.sectionTitle) || source.title;
   const articleTitle = safeText(article?.properties.title) || page.name;
-  const visualRequirements = stringList(article?.properties.visualRequirements);
   const maturityState = safeText(article?.properties.maturityState);
   const accessMode = safeText(article?.properties.accessMode);
   const lifecycleState = safeText(article?.properties.lifecycleState);
@@ -475,6 +548,7 @@ export function DocumentationPage({
       ));
   const layout = (
     <div
+      ref={layoutRef}
       className={`docs-layout${embedded ? ' docs-layout-embedded' : ''}`}
       style={
         {
@@ -482,7 +556,11 @@ export function DocumentationPage({
         } as CSSProperties
       }
     >
-      <aside className="docs-sidebar">
+      <aside
+        className="docs-sidebar"
+        aria-label="Documentation navigation"
+        tabIndex={0}
+      >
         <a className="docs-back" href="/docs">
           ← Wiki home
         </a>
@@ -563,7 +641,34 @@ export function DocumentationPage({
         role="separator"
         tabIndex={0}
       />
-      <article className="docs-article">
+      <article
+        ref={articleScrollRef}
+        onClick={(event) => {
+          if (
+            event.button !== 0 ||
+            event.metaKey ||
+            event.ctrlKey ||
+            event.shiftKey ||
+            event.altKey
+          )
+            return;
+          const link =
+            event.target instanceof Element
+              ? event.target.closest('a[href^="#"]')
+              : null;
+          if (
+            !(link instanceof HTMLAnchorElement) ||
+            !scrollToArticleAnchor(link.hash)
+          )
+            return;
+          event.preventDefault();
+          if (window.location.hash !== link.hash)
+            window.history.pushState(window.history.state, '', link.hash);
+        }}
+        className="docs-article"
+        aria-label={articleTitle}
+        tabIndex={0}
+      >
         <nav className="docs-breadcrumbs" aria-label="Documentation breadcrumb">
           <a href="/docs">Wiki</a>
           <span>/</span>
@@ -583,17 +688,6 @@ export function DocumentationPage({
         <h1>{articleTitle}</h1>
         {articleSummary ? (
           <p className="docs-summary">{articleSummary}</p>
-        ) : null}
-        {visualRequirements.length > 0 ? (
-          <div
-            className="docs-visual-contract"
-            aria-label="Visual requirements"
-          >
-            <strong>Visual contract</strong>
-            {visualRequirements.map((requirement) => (
-              <span key={requirement}>{requirement}</span>
-            ))}
-          </div>
         ) : null}
         {headings.length > 0 ? (
           <nav className="docs-toc" aria-label="On this page">
@@ -635,30 +729,23 @@ export function DocumentationPage({
   if (embedded) return layout;
   return (
     <div className="docs-detail-page">
-      <section className="docs-detail-hero">
-        <div
-          aria-label="Nodics documentation workspace"
-          className="docs-detail-hero-media"
-          role="img"
+      <section className="secondary-page-hero docs-detail-hero">
+        <img
+          src="/assets/nodics/docs-hero.png"
+          alt="Nodics documentation workspace"
         />
-        <div className="docs-detail-hero-shade" />
-        <div className="docs-detail-hero-copy">
+        <div className="secondary-page-hero-shade" aria-hidden="true" />
+        <div className="secondary-page-hero-copy">
           <p className="eyebrow">Nodics Wiki</p>
-          <nav className="docs-landing-breadcrumbs" aria-label="Breadcrumb">
+          <h1>{sectionTitle}</h1>
+          <nav className="secondary-page-breadcrumbs" aria-label="Breadcrumb">
             <a href="/">Home</a>
             <span>›</span>
             <a href="/docs">Wiki</a>
             <span>›</span>
             <strong>{sectionTitle}</strong>
           </nav>
-          <h1>{sectionTitle}</h1>
           <p>{articleSummary || articleTitle}</p>
-          <div className="docs-detail-hero-meta" aria-label="Page context">
-            <span>{articleTitle}</span>
-            {audienceItems.slice(0, 3).map((item) => (
-              <span key={item}>{item}</span>
-            ))}
-          </div>
         </div>
       </section>
       {layout}

@@ -1,6 +1,8 @@
 import { render, screen } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { NexusBootstrap } from '../src/app/NexusBootstrap';
+import { resolveCmsPage } from '../src/cms/cmsClient';
+vi.mock('../src/cms/cmsClient', () => ({ resolveCmsPage: vi.fn() }));
 import {
   loadNexusRuntimeConfig,
   resolveHostMapping,
@@ -47,11 +49,13 @@ const mapping: NexusHostMapping = {
 };
 
 afterEach(() => {
-  vi.clearAllMocks();
+  vi.resetAllMocks();
+  window.history.replaceState({}, '', '/');
 });
 
 describe('Nexus bootstrap routing', () => {
-  it('renders documentation routes without the hardcoded Nexus site shell', async () => {
+  it('keeps published documentation available without inventing an unpublished host header', async () => {
+    vi.mocked(resolveCmsPage).mockRejectedValueOnce(new Error('Not published'));
     window.history.pushState({}, '', '/docs/framework');
     vi.mocked(loadNexusRuntimeConfig).mockResolvedValueOnce(config);
     vi.mocked(resolveHostMapping).mockReturnValueOnce(mapping);
@@ -65,5 +69,75 @@ describe('Nexus bootstrap routing', () => {
       screen.queryByRole('navigation', { name: 'Primary navigation' }),
     ).not.toBeInTheDocument();
     expect(screen.queryByRole('contentinfo')).not.toBeInTheDocument();
+  });
+  it('renders the published host header above documentation and marks Docs active', async () => {
+    window.history.pushState({}, '', '/docs/nodics-kickoff');
+    vi.mocked(loadNexusRuntimeConfig).mockResolvedValueOnce(config);
+    vi.mocked(resolveHostMapping).mockReturnValueOnce(mapping);
+    vi.mocked(resolveCmsPage).mockResolvedValueOnce({
+      contractVersion: 0,
+      site: mapping.siteCode,
+      path: '/',
+      locale: 'en',
+      channel: 'web',
+      page: {
+        code: 'publishedHome',
+        name: 'Published home',
+        renderer: 'nexus.page.standard',
+        rendererContractVersion: 1,
+        rendererChannels: ['web'],
+        rendererDeprecated: false,
+        templateContract: {
+          code: 'standard',
+          renderer: 'nexus.template.standard',
+          contractVersion: 0,
+        },
+        components: [
+          {
+            code: 'publishedHeader',
+            typeCode: 'header',
+            active: true,
+            renderer: 'nexus.component.site-header',
+            rendererContractVersion: 1,
+            rendererChannels: ['web'],
+            rendererDeprecated: false,
+            slot: 'header',
+            index: 0,
+            components: [],
+            properties: {
+              brandLabel: 'Published Brand',
+              brandSubtitle: 'Knowledge',
+              navigation: [
+                { id: 'home', label: 'Published Home', href: '/' },
+                { id: 'wiki', label: 'Published Docs', href: '/docs' },
+              ],
+            },
+          },
+        ],
+      },
+    });
+    render(<NexusBootstrap />);
+    const navigation = await screen.findByRole('navigation', {
+      name: 'Primary navigation',
+    });
+    expect(navigation).toBeVisible();
+    expect(
+      screen.getByRole('link', { name: 'Published Docs' }),
+    ).toHaveAttribute('aria-current', 'page');
+    expect(
+      screen.getByRole('heading', {
+        name: 'Documentation for /docs/nodics-kickoff',
+      }),
+    ).toBeVisible();
+    expect(resolveCmsPage).toHaveBeenCalledWith(
+      expect.objectContaining({
+        site: mapping.siteCode,
+        path: '/',
+        enterpriseCode: config.enterpriseCode,
+      }),
+    );
+    expect(
+      screen.queryByRole('link', { name: 'Features' }),
+    ).not.toBeInTheDocument();
   });
 });

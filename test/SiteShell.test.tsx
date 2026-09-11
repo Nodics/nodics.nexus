@@ -35,6 +35,23 @@ const shell: SiteShellContent = {
 };
 
 describe('Nexus site shell navigation', () => {
+  it('marks Products active and links directly to its homepage section', () => {
+    window.history.pushState({}, '', '/#products');
+    render(
+      <SiteShell
+        axisBaseUrl="http://localhost:3100"
+        shell={DEFAULT_NEXUS_SITE_SHELL}
+      >
+        <section id="products">Product portfolio</section>
+      </SiteShell>,
+    );
+    const primary = screen.getByRole('navigation', {
+      name: 'Primary navigation',
+    });
+    const products = within(primary).getByRole('link', { name: 'Products' });
+    expect(products).toHaveAttribute('href', '/#products');
+    expect(products).toHaveAttribute('aria-current', 'page');
+  });
   it('does not render corporate chrome when CMS shell content is absent', () => {
     window.history.pushState({}, '', '/');
     render(

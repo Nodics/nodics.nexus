@@ -132,6 +132,7 @@ export function parseCmsResolvedPage(value: unknown): CmsResolvedPageContract {
         contractVersion: integer(
           page.templateContract.contractVersion,
           'template.contractVersion',
+          false,
         ),
       }),
       components: components(page.components),

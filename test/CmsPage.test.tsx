@@ -188,92 +188,95 @@ describe('Nexus CMS page', () => {
     expect(screen.queryByText(/Axis/i)).toBeNull();
   });
 
-  it('renders CMS shell records as chrome instead of page body components', async () => {
-    vi.spyOn(globalThis, 'fetch').mockResolvedValueOnce(
-      new Response(
-        JSON.stringify({
-          result: {
-            contractVersion: 0,
-            site: 'nexusCorporateSite',
-            path: '/',
-            locale: 'en',
-            channel: 'web',
-            page: {
-              code: 'nexusHomePage',
-              name: 'Nodics Nexus',
-              renderer: 'nexus.page.home',
-              rendererContractVersion: 1,
-              rendererChannels: ['web'],
-              rendererDeprecated: false,
-              templateContract: {
-                code: 'nexusCorporatePageTemplate',
-                renderer: 'nexus.template.corporate',
-                contractVersion: 1,
+  it.each([0, 1])(
+    'renders CMS shell records with supported template version %i',
+    async (templateVersion) => {
+      vi.spyOn(globalThis, 'fetch').mockResolvedValueOnce(
+        new Response(
+          JSON.stringify({
+            result: {
+              contractVersion: 0,
+              site: 'nexusCorporateSite',
+              path: '/',
+              locale: 'en',
+              channel: 'web',
+              page: {
+                code: 'nexusHomePage',
+                name: 'Nodics Nexus',
+                renderer: 'nexus.page.home',
+                rendererContractVersion: 1,
+                rendererChannels: ['web'],
+                rendererDeprecated: false,
+                templateContract: {
+                  code: 'nexusCorporatePageTemplate',
+                  renderer: 'nexus.template.corporate',
+                  contractVersion: templateVersion,
+                },
+                components: [
+                  cmsComponent(
+                    'nexusCorporateSiteHeader',
+                    'nexus.component.site-header',
+                    {
+                      brandLabel: 'NODICS',
+                      brandSubtitle: 'NEXUS',
+                      navigation: [
+                        { label: 'Home', href: '/', id: 'home' },
+                        { label: 'Docs', href: '/docs', id: 'wiki' },
+                        { label: 'Axis', href: '{axisBaseUrl}', id: 'axis' },
+                      ],
+                    },
+                    0,
+                  ),
+                  cmsComponent(
+                    'nexusCorporateSiteFooter',
+                    'nexus.component.site-footer',
+                    {
+                      brandSummary: 'CMS-owned shell summary',
+                      contactHeading: 'Connect',
+                      contactEmail: 'nodics.framework@gmail.com',
+                      groups: [
+                        {
+                          title: 'Developers',
+                          links: [
+                            { label: 'API Reference', href: '/docs?tab=api' },
+                          ],
+                        },
+                      ],
+                      legalText: '© 2026 Nodics. All rights reserved.',
+                      legalLinks: [{ label: 'Privacy', href: '/privacy' }],
+                      socialLinks: [],
+                    },
+                    1,
+                  ),
+                  cmsComponent(
+                    'nexusHomeAbout',
+                    'nexus.component.content',
+                    {
+                      anchor: 'aboutus',
+                      heading: 'About Nodics',
+                      body: 'Body content',
+                    },
+                    2,
+                  ),
+                ],
               },
-              components: [
-                cmsComponent(
-                  'nexusCorporateSiteHeader',
-                  'nexus.component.site-header',
-                  {
-                    brandLabel: 'NODICS',
-                    brandSubtitle: 'NEXUS',
-                    navigation: [
-                      { label: 'Home', href: '/', id: 'home' },
-                      { label: 'Docs', href: '/docs', id: 'wiki' },
-                      { label: 'Axis', href: '{axisBaseUrl}', id: 'axis' },
-                    ],
-                  },
-                  0,
-                ),
-                cmsComponent(
-                  'nexusCorporateSiteFooter',
-                  'nexus.component.site-footer',
-                  {
-                    brandSummary: 'CMS-owned shell summary',
-                    contactHeading: 'Connect',
-                    contactEmail: 'nodics.framework@gmail.com',
-                    groups: [
-                      {
-                        title: 'Developers',
-                        links: [
-                          { label: 'API Reference', href: '/docs?tab=api' },
-                        ],
-                      },
-                    ],
-                    legalText: '© 2026 Nodics. All rights reserved.',
-                    legalLinks: [{ label: 'Privacy', href: '/privacy' }],
-                    socialLinks: [],
-                  },
-                  1,
-                ),
-                cmsComponent(
-                  'nexusHomeAbout',
-                  'nexus.component.content',
-                  {
-                    anchor: 'aboutus',
-                    heading: 'About Nodics',
-                    body: 'Body content',
-                  },
-                  2,
-                ),
-              ],
             },
-          },
-        }),
-        { status: 200 },
-      ),
-    );
+          }),
+          { status: 200 },
+        ),
+      );
 
-    render(<CmsPage config={config} mapping={mapping} path="/" />);
+      render(<CmsPage config={config} mapping={mapping} path="/" />);
 
-    expect(
-      await screen.findByRole('navigation', { name: 'Primary navigation' }),
-    ).toBeInTheDocument();
-    expect(screen.getByRole('link', { name: 'Axis' })).toHaveAttribute(
-      'href',
-      'http://localhost:3100',
-    );
-    expect(screen.getByText('CMS-owned shell summary')).toBeInTheDocument();
-    expect(screen.queryByText(/Unsupported content renderer/i)).toBeNull();
-  });
+      expect(
+        await screen.findByRole('navigation', { name: 'Primary navigation' }),
+      ).toBeInTheDocument();
+      expect(screen.getByRole('link', { name: 'Axis' })).toHaveAttribute(
+        'href',
+        'http://localhost:3100',
+      );
+      expect(screen.getByText('CMS-owned shell summary')).toBeInTheDocument();
+      expect(screen.queryByText(/Unsupported content renderer/i)).toBeNull();
+    },
+  );
 });

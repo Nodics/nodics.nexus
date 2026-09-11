@@ -233,6 +233,20 @@ describe('Nexus documentation page', () => {
                   text: 'flowchart LR\\nAxis --> Platform\\nPlatform --> Nodes',
                 },
                 {
+                  kind: 'paragraph',
+                  text: '[Read setup](/docs/framework/setup) and [Unsafe](javascript:alert%281%29)',
+                },
+                {
+                  kind: 'image',
+                  source: '/documentation/runtime.png',
+                  alt: 'Runtime overview',
+                },
+                {
+                  kind: 'image',
+                  source: 'javascript:alert(1)',
+                  alt: 'Unsafe image',
+                },
+                {
                   kind: 'table',
                   headers: ['Decision', 'Evidence'],
                   rows: [['Runtime change', 'Approved and published']],
@@ -260,9 +274,7 @@ describe('Nexus documentation page', () => {
     expect(screen.getByText('operational')).toBeInTheDocument();
     expect(screen.getByText('PUBLIC')).toBeInTheDocument();
     expect(screen.getByText('ONLINE')).toBeInTheDocument();
-    expect(screen.getByText('Visual contract')).toBeInTheDocument();
-    expect(screen.getByText('data-flow')).toBeInTheDocument();
-    expect(screen.getByText('configuration-table')).toBeInTheDocument();
+    expect(screen.queryByText('Visual contract')).not.toBeInTheDocument();
     expect(resolveCmsPage).toHaveBeenCalledWith(
       expect.objectContaining({
         site: 'nodicsDocumentationSite',
@@ -276,5 +288,44 @@ describe('Nexus documentation page', () => {
       ).toBeInTheDocument(),
     );
     expect(screen.getByRole('table')).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'Read setup' })).toHaveAttribute(
+      'href',
+      '/docs/framework/setup',
+    );
+    expect(
+      screen.queryByRole('link', { name: 'Unsafe' }),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.getByRole('img', { name: 'Runtime overview' }),
+    ).toHaveAttribute('src', '/documentation/runtime.png');
+    expect(
+      screen.queryByRole('img', { name: 'Unsafe image' }),
+    ).not.toBeInTheDocument();
+
+    const panel = screen.getByRole('article', { name: 'Runtime Governance' });
+    const sidebar = screen.getByRole('complementary', {
+      name: 'Documentation navigation',
+    });
+    const layout = container.querySelector('.docs-layout')!;
+    const alignWorkspace = vi.fn();
+    Object.defineProperty(layout, 'scrollIntoView', { value: alignWorkspace });
+    vi.spyOn(panel, 'getBoundingClientRect').mockReturnValue({
+      top: 100,
+    } as DOMRect);
+    vi.spyOn(
+      screen.getByRole('heading', { name: 'Runtime flow' }),
+      'getBoundingClientRect',
+    ).mockReturnValue({ top: 400 } as DOMRect);
+    panel.scrollTop = 25;
+    sidebar.scrollTop = 55;
+    fireEvent.click(screen.getByRole('link', { name: 'Runtime flow' }));
+    expect(panel.scrollTop).toBe(309);
+    expect(sidebar.scrollTop).toBe(55);
+    expect(alignWorkspace).toHaveBeenCalledWith({
+      block: 'start',
+      behavior: 'instant',
+    });
+    expect(window.location.hash).toBe('#runtime-flow');
+    window.history.replaceState({}, '', '/');
   });
 });

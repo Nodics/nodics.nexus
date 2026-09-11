@@ -36,8 +36,8 @@ export const DEFAULT_NEXUS_SITE_SHELL: SiteShellContent = Object.freeze({
   navigation: Object.freeze([
     Object.freeze({ label: 'Home', href: '/', id: 'home' }),
     Object.freeze({ label: 'About', href: '/#aboutus', id: 'about' }),
-    Object.freeze({ label: 'Features', href: '/#features', id: 'features' }),
-    Object.freeze({ label: 'Solutions', href: '/#products', id: 'products' }),
+    Object.freeze({ label: 'Products', href: '/#products', id: 'products' }),
+    Object.freeze({ label: 'Solutions', href: '/#solutions', id: 'solutions' }),
     Object.freeze({ label: 'Support', href: '/#support', id: 'support' }),
     Object.freeze({ label: 'Blogs', href: '/#blogs', id: 'blogs' }),
     Object.freeze({ label: 'Docs', href: '/docs', id: 'wiki' }),
@@ -48,8 +48,9 @@ export const DEFAULT_NEXUS_SITE_SHELL: SiteShellContent = Object.freeze({
       title: 'Platform',
       links: Object.freeze([
         Object.freeze({ label: 'Features', href: '/#features' }),
-        Object.freeze({ label: 'Solutions', href: '/#products' }),
-        Object.freeze({ label: 'Technology Stack', href: '/#products' }),
+        Object.freeze({ label: 'Products', href: '/#products' }),
+        Object.freeze({ label: 'Solutions', href: '/#solutions' }),
+        Object.freeze({ label: 'Technology Stack', href: '/#technology' }),
         Object.freeze({ label: 'Support', href: '/#support' }),
       ]),
     }),
@@ -129,7 +130,10 @@ function activeNavigationFromPath(
     if (docsMatch) return docsMatch.id ?? docsMatch.label;
   }
   const segment = pathname.split('/').filter(Boolean)[0];
-  const segmentMatch = navigation.find((item) => item.id === segment);
+  const segmentMatch = navigation.find(
+    (item) =>
+      item.id === segment || (segment === 'features' && item.id === 'about'),
+  );
   if (segmentMatch) return segmentMatch.id ?? segmentMatch.label;
   if (
     pathname.startsWith('/blog') ||
@@ -181,9 +185,18 @@ function SiteShellChrome({
   const homeSectionNavigation = useMemo(
     () =>
       shell.navigation
+        .flatMap((item) =>
+          item.id === 'about'
+            ? [item, { ...item, href: '/#features' }]
+            : [item],
+        )
         .map((item) => {
           const href = normalizedShellHref(item, axisBaseUrl);
-          const hash = href.includes('#') ? href.split('#')[1] : '';
+          const hash = href.includes('#')
+            ? href.split('#')[1]
+            : /^\/(?!\/)/u.test(href)
+              ? (item.id ?? '')
+              : '';
           return hash ? ([hash, item.id ?? item.label] as const) : undefined;
         })
         .filter((item): item is readonly [string, string] => Boolean(item)),

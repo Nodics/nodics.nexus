@@ -205,9 +205,12 @@ export function PageHeroRenderer({ component }: Props) {
     runtime?.config.endpoints.cms,
   );
   const currentLabel = text(p, 'breadcrumbLabel', text(p, 'heading'));
+  const parentHref = text(p, 'breadcrumbParentHref');
+  const parentLabel = text(p, 'breadcrumbParentLabel');
+  const showParent = /^\/(?!\/)[^\\\s]*$/u.test(parentHref) && parentLabel;
   return (
     <section
-      className="secondary-page-hero"
+      className={`secondary-page-hero${text(p, 'imageTreatment') === 'soft-focus' ? ' secondary-page-hero-soft-focus' : ''}`}
       aria-labelledby={`${component.code}-title`}
     >
       {source ? <img src={source} alt={text(p, 'imageAlt')} /> : null}
@@ -218,6 +221,12 @@ export function PageHeroRenderer({ component }: Props) {
         <nav className="secondary-page-breadcrumbs" aria-label="Breadcrumb">
           <a href="/">Home</a>
           <span aria-hidden="true">›</span>
+          {showParent ? (
+            <>
+              <a href={parentHref}>{parentLabel}</a>
+              <span aria-hidden="true">›</span>
+            </>
+          ) : null}
           <strong>{currentLabel}</strong>
         </nav>
         <p>{text(p, 'body')}</p>
@@ -797,7 +806,10 @@ export function CardsRenderer({ component }: Props) {
 
 export function TechnologyRenderer({ component }: Props) {
   return (
-    <section className="technology">
+    <section
+      className="technology"
+      id={text(component.properties, 'anchor', 'technology')}
+    >
       <div className="section-wrap">
         <div className="technology-grid">
           <div className="technology-visual">
