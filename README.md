@@ -17,17 +17,13 @@ derived from Nexus.
 
 ## Local startup
 
-From the configured Kickoff project, start the declared local topology:
+Run `npm ci` and `npm run dev` in this repository. Nexus starts independently
+of backend services and displays its own service-unavailable/retry state when
+Online CMS cannot be reached. Its tests run here with `npm test`.
 
-```bash
-npm run topology:start:all
-```
-
-In Axis, complete first-run setup and register/activate the required modules.
-Use **Setup & Accelerators** to initialize Nexus, then approve its immutable
-Staged publication. Nexus reads only the approved Online content. The topology
-starts the frontend; for standalone frontend development, run `npm ci` and
-`npm run dev` from this repository after the backend is ready.
+Start the backend separately. In Axis, initialize Nexus through **Setup &
+Accelerators** and approve its immutable Staged publication. Nexus reads only
+approved Online content. See [independent Docker startup](docker/README.md).
 
 Open <http://localhost:3200>. Public runtime configuration is generated as
 `/nexus-config.json` and contains no secrets. Unknown hosts fail closed.

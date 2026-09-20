@@ -27,6 +27,13 @@ type State =
     };
 
 function fallbackContent(kind: CmsPageDeliveryErrorKind, path: string) {
+  if (kind === 'service-unavailable')
+    return {
+      eyebrow: 'Service unavailable',
+      heading: 'Nexus is temporarily unavailable.',
+      body: 'We cannot reach the service right now. Please try again shortly.',
+      showRetry: true,
+    };
   if (kind === 'not-found' && path !== '/')
     return {
       eyebrow: 'Page not found',

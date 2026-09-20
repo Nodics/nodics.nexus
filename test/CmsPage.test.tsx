@@ -72,21 +72,28 @@ describe('Nexus CMS page', () => {
     );
   });
 
-  it('shows a service-unavailable state when CMS cannot serve content', async () => {
-    vi.spyOn(globalThis, 'fetch').mockResolvedValueOnce(
-      new Response(JSON.stringify({}), { status: 503 }),
-    );
+  it.each(['http', 'network'])(
+    'shows a service-unavailable state for a %s failure',
+    async (failure) => {
+      const request = vi.spyOn(globalThis, 'fetch');
+      if (failure === 'network')
+        request.mockRejectedValueOnce(new TypeError('Failed to fetch'));
+      else
+        request.mockResolvedValueOnce(
+          new Response(JSON.stringify({}), { status: 503 }),
+        );
 
-    render(<CmsPage config={config} mapping={mapping} path="/support" />);
+      render(<CmsPage config={config} mapping={mapping} path="/support" />);
 
-    expect(
-      await screen.findByRole('heading', {
-        name: 'We are getting Nexus ready.',
-      }),
-    ).toBeInTheDocument();
-    expect(screen.getByText(/complete a content update/i)).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'Try again' })).toBeEnabled();
-  });
+      expect(
+        await screen.findByRole('heading', {
+          name: 'Nexus is temporarily unavailable.',
+        }),
+      ).toBeInTheDocument();
+      expect(screen.getByText(/cannot reach the service/i)).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: 'Try again' })).toBeEnabled();
+    },
+  );
 
   it('shows a maintenance state for an unpublished home page route', async () => {
     vi.spyOn(globalThis, 'fetch').mockResolvedValueOnce(

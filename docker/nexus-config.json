@@ -1,0 +1,16 @@
+{
+  "axisBaseUrl": "http://localhost:4100",
+  "platformBaseUrl": "http://localhost:5300",
+  "enterpriseCode": "default",
+  "defaultLocale": "en",
+  "channel": "web",
+  "clientContractVersion": 1,
+  "requestTimeoutMs": 10000,
+  "hostMappings": [
+    {
+      "hosts": ["localhost", "127.0.0.1"],
+      "siteCode": "nexusCorporateSite",
+      "experience": "corporate"
+    }
+  ]
+}

@@ -32,3 +32,7 @@ The AI tool must read this `AGENTS.md`, the Nexus README, and the nearest
 feature README/AGENTS or focused tests before changing source. Use
 `nodics.installer` only when the request is to create, repair, preflight, start,
 initialize, accept, or inspect a local customer workspace that includes Nexus.
+
+Frontend startup is independent of backend health. Keep unavailable/retry UI and
+frontend tests in this application. Backend API acceptance must never start or
+test this frontend. Container deployment is owned by [docker/README.md](docker/README.md).
