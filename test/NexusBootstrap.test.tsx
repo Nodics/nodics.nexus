@@ -1,4 +1,10 @@
-import { render, screen } from '@testing-library/react';
+import {
+  act,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+} from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { NexusBootstrap } from '../src/app/NexusBootstrap';
 import { resolveCmsPage } from '../src/cms/cmsClient';
@@ -24,6 +30,11 @@ vi.mock('../src/documentation/DocumentationPage', () => ({
   DocumentationPage: ({ path }: { readonly path: string }) => (
     <section aria-label="Documentation content">
       <h1>Documentation for {path}</h1>
+      <a href="/docs/swaggers">Swagger</a>
+      <a href="/docs/framework/guide?section=setup#installation">Guide</a>
+      <a href="/docs/nodics-axis" target="_blank">
+        New tab
+      </a>
     </section>
   ),
 }));
@@ -54,6 +65,55 @@ afterEach(() => {
 });
 
 describe('Nexus bootstrap routing', () => {
+  it('navigates documentation in place and follows history without reloading bootstrap', async () => {
+    window.history.replaceState({}, '', '/docs/framework');
+    vi.mocked(loadNexusRuntimeConfig).mockResolvedValue(config);
+    vi.mocked(resolveHostMapping).mockReturnValue(mapping);
+    vi.mocked(resolveCmsPage).mockRejectedValue(new Error('Not published'));
+    const scroll = vi
+      .spyOn(window, 'scrollTo')
+      .mockImplementation(() => undefined);
+    render(<NexusBootstrap />);
+    const reader = await screen.findByRole('region', {
+      name: 'Documentation content',
+    });
+    fireEvent.click(screen.getByRole('link', { name: 'Swagger' }));
+    expect(window.location.pathname).toBe('/docs/swaggers');
+    expect(screen.getByRole('region', { name: 'Documentation content' })).toBe(
+      reader,
+    );
+    expect(reader).toHaveTextContent('Documentation for /docs/swaggers');
+    fireEvent.click(screen.getByRole('link', { name: 'Guide' }));
+    expect(window.location.search).toBe('?section=setup');
+    expect(window.location.hash).toBe('#installation');
+    await act(async () => {
+      window.history.back();
+      await new Promise<void>((resolve) =>
+        window.addEventListener('popstate', () => resolve(), { once: true }),
+      );
+    });
+    expect(reader).toHaveTextContent('Documentation for /docs/swaggers');
+    await act(async () => {
+      window.history.forward();
+      await new Promise<void>((resolve) =>
+        window.addEventListener('popstate', () => resolve(), { once: true }),
+      );
+    });
+    expect(reader).toHaveTextContent('Documentation for /docs/framework/guide');
+    const modified = new MouseEvent('click', {
+      bubbles: true,
+      cancelable: true,
+      ctrlKey: true,
+    });
+    screen.getByRole('link', { name: 'Swagger' }).dispatchEvent(modified);
+    expect(modified.defaultPrevented).toBe(false);
+    const newTab = new MouseEvent('click', { bubbles: true, cancelable: true });
+    screen.getByRole('link', { name: 'New tab' }).dispatchEvent(newTab);
+    expect(newTab.defaultPrevented).toBe(false);
+    expect(loadNexusRuntimeConfig).toHaveBeenCalledTimes(1);
+    expect(resolveCmsPage).toHaveBeenCalledTimes(1);
+    scroll.mockRestore();
+  });
   it('keeps published documentation available without inventing an unpublished host header', async () => {
     vi.mocked(resolveCmsPage).mockRejectedValueOnce(new Error('Not published'));
     window.history.pushState({}, '', '/docs/framework');
@@ -121,9 +181,11 @@ describe('Nexus bootstrap routing', () => {
       name: 'Primary navigation',
     });
     expect(navigation).toBeVisible();
-    expect(
-      screen.getByRole('link', { name: 'Published Docs' }),
-    ).toHaveAttribute('aria-current', 'page');
+    await waitFor(() =>
+      expect(
+        screen.getByRole('link', { name: 'Published Docs' }),
+      ).toHaveAttribute('aria-current', 'page'),
+    );
     expect(
       screen.getByRole('heading', {
         name: 'Documentation for /docs/nodics-kickoff',

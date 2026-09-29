@@ -144,6 +144,8 @@ function activeNavigationFromPath(
   return '';
 }
 
+const emptyNavigation: readonly SiteShellLink[] = [];
+
 export function SiteShell({
   axisBaseUrl,
   children,
@@ -153,38 +155,17 @@ export function SiteShell({
   readonly children: ReactNode;
   readonly shell?: SiteShellContent;
 }) {
-  if (!shell)
-    return (
-      <main className="site-shell-content-only" id="main-content">
-        {children}
-      </main>
-    );
-  return (
-    <SiteShellChrome axisBaseUrl={axisBaseUrl} shell={shell}>
-      {children}
-    </SiteShellChrome>
-  );
-}
-
-function SiteShellChrome({
-  axisBaseUrl,
-  children,
-  shell,
-}: {
-  readonly axisBaseUrl: string;
-  readonly children: ReactNode;
-  readonly shell: SiteShellContent;
-}) {
+  const navigation = shell?.navigation ?? emptyNavigation;
   const [headerIsScrolled, setHeaderIsScrolled] = useState(false);
   const [mobileNavigationOpen, setMobileNavigationOpen] = useState(false);
   const [activeNavigation, setActiveNavigation] = useState(() =>
-    activeNavigationFromPath(window.location.pathname, shell.navigation),
+    activeNavigationFromPath(window.location.pathname, navigation),
   );
   const documentationRoute = window.location.pathname.startsWith('/docs');
   const documentationLanding = window.location.pathname === '/docs';
   const homeSectionNavigation = useMemo(
     () =>
-      shell.navigation
+      navigation
         .flatMap((item) =>
           item.id === 'about'
             ? [item, { ...item, href: '/#features' }]
@@ -200,7 +181,7 @@ function SiteShellChrome({
           return hash ? ([hash, item.id ?? item.label] as const) : undefined;
         })
         .filter((item): item is readonly [string, string] => Boolean(item)),
-    [axisBaseUrl, shell.navigation],
+    [axisBaseUrl, navigation],
   );
   useEffect(() => {
     const updateHeader = () => setHeaderIsScrolled(window.scrollY > 48);
@@ -221,7 +202,7 @@ function SiteShellChrome({
     const updateActiveNavigation = () => {
       const pathActiveNavigation = activeNavigationFromPath(
         window.location.pathname,
-        shell.navigation,
+        navigation,
       );
       if (window.location.pathname !== '/') {
         setActiveNavigation(pathActiveNavigation);
@@ -251,106 +232,120 @@ function SiteShellChrome({
       window.removeEventListener('hashchange', updateActiveNavigation);
       window.removeEventListener('popstate', updateActiveNavigation);
     };
-  }, [headerIsScrolled, homeSectionNavigation, shell.navigation]);
+  }, [headerIsScrolled, homeSectionNavigation, navigation]);
 
   return (
     <div className="site-shell">
-      <header
-        className={`site-header${headerIsScrolled ? ' is-scrolled' : ''}${documentationRoute ? ' docs-context' : ''}${documentationLanding ? ' docs-landing-context' : ''}${mobileNavigationOpen ? ' is-menu-open' : ''}`}
-      >
-        <Brand label={shell.brandLabel} subtitle={shell.brandSubtitle} />
-        <button
-          aria-controls="primary-navigation"
-          aria-expanded={mobileNavigationOpen}
-          aria-label="Toggle primary navigation"
-          className="mobile-navigation-toggle"
-          onClick={() => setMobileNavigationOpen((open) => !open)}
-          type="button"
+      {shell && (
+        <header
+          className={`site-header${headerIsScrolled ? ' is-scrolled' : ''}${documentationRoute ? ' docs-context' : ''}${documentationLanding ? ' docs-landing-context' : ''}${mobileNavigationOpen ? ' is-menu-open' : ''}`}
         >
-          <span />
-          <span />
-          <span />
-        </button>
-        <nav
-          aria-label="Primary navigation"
-          className={mobileNavigationOpen ? 'is-open' : undefined}
-          id="primary-navigation"
-        >
-          {shell.navigation.map((item) => {
-            const href = normalizedShellHref(item, axisBaseUrl);
-            return (
-              <a
-                aria-current={
-                  activeNavigation === (item.id ?? item.label)
-                    ? 'page'
-                    : undefined
-                }
-                className={
-                  activeNavigation === (item.id ?? item.label)
-                    ? 'active'
-                    : undefined
-                }
-                href={href}
-                key={`${item.label}-${item.href}`}
-                onClick={() => setMobileNavigationOpen(false)}
-                rel={href.startsWith('http') ? 'noreferrer' : undefined}
-                target={href.startsWith('http') ? '_blank' : undefined}
-              >
-                {item.label}
-              </a>
-            );
-          })}
-        </nav>
-      </header>
-      <main id="main-content">{children}</main>
-      <footer className="site-footer">
-        <div className="footer-brand-panel">
           <Brand label={shell.brandLabel} subtitle={shell.brandSubtitle} />
-          {shell.brandSummary ? <p>{shell.brandSummary}</p> : null}
-          <div className="footer-connect">
-            {shell.contactHeading ? <h2>{shell.contactHeading}</h2> : null}
-            <SocialLinks channels={shell.socialLinks} />
-            {shell.contactEmail ? (
-              <a href={`mailto:${shell.contactEmail}`}>{shell.contactEmail}</a>
-            ) : null}
-          </div>
-        </div>
-        <div className="footer-link-grid">
-          {shell.footerGroups.map((group) => (
-            <div className="footer-link-column" key={group.title}>
-              <h2>{group.title}</h2>
-              {group.links.map((item) => (
+          <button
+            aria-controls="primary-navigation"
+            aria-expanded={mobileNavigationOpen}
+            aria-label="Toggle primary navigation"
+            className="mobile-navigation-toggle"
+            onClick={() => setMobileNavigationOpen((open) => !open)}
+            type="button"
+          >
+            <span />
+            <span />
+            <span />
+          </button>
+          <nav
+            aria-label="Primary navigation"
+            className={mobileNavigationOpen ? 'is-open' : undefined}
+            id="primary-navigation"
+          >
+            {shell.navigation.map((item) => {
+              const href = normalizedShellHref(item, axisBaseUrl);
+              return (
                 <a
-                  href={normalizedShellHref(item, axisBaseUrl)}
-                  key={`${group.title}-${item.label}`}
-                  rel={
-                    normalizedShellHref(item, axisBaseUrl).startsWith('http')
-                      ? 'noreferrer'
+                  aria-current={
+                    activeNavigation === (item.id ?? item.label)
+                      ? 'page'
                       : undefined
                   }
-                  target={
-                    normalizedShellHref(item, axisBaseUrl).startsWith('http')
-                      ? '_blank'
+                  className={
+                    activeNavigation === (item.id ?? item.label)
+                      ? 'active'
                       : undefined
                   }
+                  href={href}
+                  key={`${item.label}-${item.href}`}
+                  onClick={() => setMobileNavigationOpen(false)}
+                  rel={href.startsWith('http') ? 'noreferrer' : undefined}
+                  target={href.startsWith('http') ? '_blank' : undefined}
+                >
+                  {item.label}
+                </a>
+              );
+            })}
+          </nav>
+        </header>
+      )}
+      <main
+        id="main-content"
+        className={shell ? undefined : 'site-shell-content-only'}
+      >
+        {children}
+      </main>
+      {shell && (
+        <footer className="site-footer">
+          <div className="footer-brand-panel">
+            <Brand label={shell.brandLabel} subtitle={shell.brandSubtitle} />
+            {shell.brandSummary ? <p>{shell.brandSummary}</p> : null}
+            <div className="footer-connect">
+              {shell.contactHeading ? <h2>{shell.contactHeading}</h2> : null}
+              <SocialLinks channels={shell.socialLinks} />
+              {shell.contactEmail ? (
+                <a href={`mailto:${shell.contactEmail}`}>
+                  {shell.contactEmail}
+                </a>
+              ) : null}
+            </div>
+          </div>
+          <div className="footer-link-grid">
+            {shell.footerGroups.map((group) => (
+              <div className="footer-link-column" key={group.title}>
+                <h2>{group.title}</h2>
+                {group.links.map((item) => (
+                  <a
+                    href={normalizedShellHref(item, axisBaseUrl)}
+                    key={`${group.title}-${item.label}`}
+                    rel={
+                      normalizedShellHref(item, axisBaseUrl).startsWith('http')
+                        ? 'noreferrer'
+                        : undefined
+                    }
+                    target={
+                      normalizedShellHref(item, axisBaseUrl).startsWith('http')
+                        ? '_blank'
+                        : undefined
+                    }
+                  >
+                    {item.label}
+                  </a>
+                ))}
+              </div>
+            ))}
+          </div>
+          {shell.legalText || shell.legalLinks.length ? (
+            <div className="footer-legal">
+              {shell.legalText ? <span>{shell.legalText}</span> : null}
+              {shell.legalLinks.map((item) => (
+                <a
+                  href={normalizedHref(item.href, axisBaseUrl)}
+                  key={item.label}
                 >
                   {item.label}
                 </a>
               ))}
             </div>
-          ))}
-        </div>
-        {shell.legalText || shell.legalLinks.length ? (
-          <div className="footer-legal">
-            {shell.legalText ? <span>{shell.legalText}</span> : null}
-            {shell.legalLinks.map((item) => (
-              <a href={normalizedHref(item.href, axisBaseUrl)} key={item.label}>
-                {item.label}
-              </a>
-            ))}
-          </div>
-        ) : null}
-      </footer>
+          ) : null}
+        </footer>
+      )}
     </div>
   );
 }

@@ -1,8 +1,15 @@
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import {
+  act,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+} from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { DocumentationPage } from '../../src/documentation/DocumentationPage';
 import type { NexusRuntimeConfig } from '../../src/runtime/runtimeConfig';
 import { resolveCmsPage } from '../../src/cms/cmsClient';
+import type { CmsResolvedPageContract } from '../../src/cms/cmsContract';
 
 vi.mock('mermaid', () => ({
   default: {
@@ -13,8 +20,15 @@ vi.mock('mermaid', () => ({
   },
 }));
 
-vi.mock('../../src/cms/cmsClient', () => ({
+vi.mock('../../src/cms/cmsClient', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('../../src/cms/cmsClient')>()),
   resolveCmsPage: vi.fn(),
+}));
+
+vi.mock('../../src/documentation/ReadOnlyApiReference', () => ({
+  ReadOnlyApiReference: () => (
+    <section aria-label="Read-only API reference">API reader</section>
+  ),
 }));
 
 const config: NexusRuntimeConfig = {
@@ -37,8 +51,139 @@ describe('Nexus documentation page', () => {
     vi.mocked(resolveCmsPage).mockReset();
   });
 
+  it('keeps the hero and strip mounted, hides old content and ignores late route responses', async () => {
+    const pageFor = (path: string): CmsResolvedPageContract => ({
+      contractVersion: 0,
+      site: 'nodicsDocumentationSite',
+      path,
+      locale: 'en',
+      channel: 'web',
+      page: {
+        code: path,
+        name: path,
+        renderer: 'documentation.page.article',
+        rendererContractVersion: 1,
+        rendererChannels: ['web'],
+        rendererDeprecated: false,
+        templateContract: {
+          code: 'article',
+          renderer: 'documentation.template.article',
+          contractVersion: 1,
+        },
+        components: [],
+      },
+    });
+    let completeSlow!: (page: CmsResolvedPageContract) => void;
+    let completeNext!: (page: CmsResolvedPageContract) => void;
+    vi.mocked(resolveCmsPage).mockImplementation(({ path }) => {
+      if (path.endsWith('/slow'))
+        return new Promise((resolve) => {
+          completeSlow = resolve;
+        });
+      if (path.endsWith('/next'))
+        return new Promise((resolve) => {
+          completeNext = resolve;
+        });
+      return Promise.resolve(pageFor(path));
+    });
+    const view = render(
+      <DocumentationPage config={config} path="/docs/framework/start" />,
+    );
+    await screen.findByRole('heading', { name: '/docs/framework/start' });
+    const hero = view.container.querySelector('.docs-detail-hero');
+    const strip = screen.getByRole('navigation', {
+      name: 'Documentation areas',
+    });
+    view.rerender(
+      <DocumentationPage config={config} path="/docs/framework/slow" />,
+    );
+    expect(screen.getByText('Loading documentation…')).toBeVisible();
+    expect(
+      screen.queryByRole('heading', { name: '/docs/framework/start' }),
+    ).toBeNull();
+    expect(view.container.querySelector('.docs-detail-hero')).toBe(hero);
+    expect(
+      screen.getByRole('navigation', { name: 'Documentation areas' }),
+    ).toBe(strip);
+    view.rerender(
+      <DocumentationPage config={config} path="/docs/framework/next" />,
+    );
+    await act(async () => completeSlow(pageFor('/docs/framework/slow')));
+    expect(
+      screen.queryByRole('heading', { name: '/docs/framework/slow' }),
+    ).toBeNull();
+    expect(screen.getByText('Loading documentation…')).toBeVisible();
+    await act(async () => completeNext(pageFor('/docs/framework/next')));
+    expect(
+      screen.getByRole('heading', { name: '/docs/framework/next' }),
+    ).toBeVisible();
+    expect(
+      screen.getByRole('navigation', { name: 'Documentation areas' }),
+    ).toBe(strip);
+    view.rerender(<DocumentationPage config={config} path="/docs/swaggers" />);
+    expect(view.container.querySelector('.docs-detail-hero')).toBe(hero);
+    expect(
+      screen.getByRole('navigation', { name: 'Documentation areas' }),
+    ).toBe(strip);
+    expect(resolveCmsPage).toHaveBeenCalledTimes(6);
+  });
+
+  it.each(['/docs/swaggers', '/docs/api'])(
+    'shares the documentation shell at %s even when CMS is unavailable',
+    async (path) => {
+      vi.mocked(resolveCmsPage).mockRejectedValue(new Error('CMS unavailable'));
+      const { container } = render(
+        <DocumentationPage config={config} path={path} />,
+      );
+      const hero = container.querySelector('.docs-detail-hero')!;
+      const strip = container.querySelector('.docs-source-navigation')!;
+      expect(
+        screen.getByRole('heading', { level: 1, name: 'Swagger' }),
+      ).toBeInTheDocument();
+      expect(
+        screen.getByRole('navigation', { name: 'Breadcrumb' }),
+      ).toHaveTextContent('Home');
+      expect(
+        hero.compareDocumentPosition(strip) & Node.DOCUMENT_POSITION_FOLLOWING,
+      ).toBeTruthy();
+      expect(container.querySelector('.docs-api-layout')).toContainElement(
+        screen.getByRole('region', { name: 'Read-only API reference' }),
+      );
+      expect(
+        screen.getByRole('region', { name: 'Read-only API reference' }),
+      ).toBeInTheDocument();
+      expect(screen.getByRole('link', { name: 'Swagger' })).toHaveAttribute(
+        'aria-current',
+        'page',
+      );
+      expect(
+        await screen.findByRole('button', {
+          name: 'Retry documentation links',
+        }),
+      ).toBeInTheDocument();
+    },
+  );
+
+  it('retains cross-source navigation when the current article cannot load', async () => {
+    vi.mocked(resolveCmsPage).mockRejectedValue(new Error('CMS unavailable'));
+    render(
+      <DocumentationPage config={config} path="/docs/nodics-axis/missing" />,
+    );
+    expect(
+      await screen.findByRole('heading', { name: 'Documentation unavailable' }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole('navigation', { name: 'Documentation areas' }),
+    ).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'Swagger' })).toHaveAttribute(
+      'href',
+      '/docs/swaggers',
+    );
+    await screen.findByRole('button', { name: 'Retry documentation links' });
+  });
+
   it('loads the documentation gateway from CMS', async () => {
-    vi.mocked(resolveCmsPage).mockResolvedValueOnce({
+    vi.mocked(resolveCmsPage).mockResolvedValue({
       contractVersion: 0,
       site: 'nodicsDocumentationSite',
       path: '/docs',
@@ -153,7 +298,7 @@ describe('Nexus documentation page', () => {
   });
 
   it('renders enterprise page anatomy and visual documentation blocks from CMS', async () => {
-    vi.mocked(resolveCmsPage).mockResolvedValueOnce({
+    vi.mocked(resolveCmsPage).mockResolvedValue({
       contractVersion: 0,
       site: 'nodicsDocumentationSite',
       path: '/docs/framework/runtime-governance',

@@ -5224,6 +5224,89 @@ a {
   min-height: 100vh;
   background: #f5f5f2;
 }
+.docs-source-navigation {
+  padding: 0 max(1.25rem, calc((100vw - 1240px) / 2));
+  border-bottom: 1px solid var(--line);
+  background: #fff;
+  color: var(--ink);
+}
+.docs-source-navigation-links {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+.docs-source-navigation-links > a,
+.docs-source-navigation-links > span {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 0.25rem;
+  min-width: 0;
+  min-height: 76px;
+  padding: 1rem 1.25rem;
+  border-bottom: 3px solid transparent;
+  color: var(--ink);
+  font-size: 0.95rem;
+  font-weight: 700;
+  line-height: 1.4;
+  letter-spacing: 0;
+  text-decoration: none;
+  overflow-wrap: anywhere;
+}
+.docs-source-navigation-links > a:hover {
+  background: #f5f5f2;
+}
+.docs-source-navigation-links > a[aria-current='page'] {
+  border-bottom-color: var(--gold);
+  background: #fffae5;
+}
+.docs-source-navigation-links > a:focus-visible,
+.docs-source-navigation-status button:focus-visible {
+  outline: 2px solid var(--ink);
+  outline-offset: -3px;
+}
+.docs-source-navigation-links > span {
+  color: var(--muted);
+}
+.docs-source-navigation-links small {
+  font-size: 0.75rem;
+  font-weight: 400;
+}
+.docs-source-navigation-status {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem 1rem;
+  padding: 0.75rem 0;
+  border-top: 1px solid var(--line);
+  font-size: 0.8rem;
+  color: var(--muted);
+}
+.docs-source-navigation-status button {
+  min-height: 36px;
+  border: 0;
+  background: transparent;
+  color: var(--ink);
+  cursor: pointer;
+  font: inherit;
+  font-weight: 700;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+.docs-unavailable-page {
+  padding-top: 100px;
+}
+.site-shell:has(.docs-unavailable-page) > .site-header {
+  background: #242629;
+}
+@media (max-width: 600px) {
+  .docs-source-navigation-links {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .docs-source-navigation-links > a,
+  .docs-source-navigation-links > span {
+    padding: 0.75rem;
+  }
+}
 .docs-detail-page .docs-layout {
   padding-top: clamp(2.5rem, 5vw, 4rem);
 }
@@ -5408,18 +5491,26 @@ a {
   background: #fff;
   box-shadow: 0 24px 80px rgb(21 23 26 / 8%);
 }
+.docs-api-layout {
+  padding: 1.5rem max(1.25rem, calc((100vw - 1240px) / 2));
+}
+.docs-api-layout .api-reference {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
 .api-reference-heading {
   display: flex;
+  flex-wrap: wrap;
   gap: 2rem;
   align-items: flex-start;
   justify-content: space-between;
   border-bottom: 1px solid var(--line);
   padding-bottom: 1.5rem;
 }
-.api-reference-heading h1 {
+.api-reference-heading h2 {
   margin: 0.7rem 0 0;
-  font-size: clamp(2.2rem, 4vw, 4rem);
-  letter-spacing: -0.04em;
+  font-size: 1.75rem;
+  letter-spacing: 0;
 }
 .api-reference-heading > span {
   padding: 0.5rem 0.8rem;

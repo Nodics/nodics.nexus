@@ -267,9 +267,9 @@ export function ReadOnlyApiReference({
       <div className="api-reference-heading">
         <div>
           <p className="eyebrow">Live backend contract</p>
-          <h1>
+          <h2>
             {state.status === 'ready' ? state.title : 'Nodics API Reference'}
-          </h1>
+          </h2>
         </div>
         <span>View only</span>
       </div>

@@ -57,6 +57,42 @@ navigation and article panels with independent, keyboard-accessible scrolling,
 similar to Axis. On narrow screens the article follows the page flow and the
 navigation has a bounded scroll area.
 
+The documentation-area strip links Framework, Axis, Kickoff and Swagger on the
+gateway, article pages and API reader. It reuses the supported reader route-to-Site
+bindings in `src/documentation/documentationRoutes.ts`; these bindings are not a
+second publication catalogue. `DocumentationSourceNavigation` takes pack titles
+and availability from public Online CMS responses, reuses the current article's
+navigation, and checks roots independently through the configured CMS
+endpoint. A missing or unverified pack is disabled with retry guidance; it cannot
+hide the other packs or the native Swagger reader. `/docs/api` remains an alias
+of `/docs/swaggers`. Publication is not implied by a known frontend route.
+
+Swagger and published articles share `DocumentationHero`, so the banner,
+breadcrumbs and source strip keep the same position when switching areas. The
+API reader uses the documentation content width and a subordinate contract
+heading. This is frontend presentation only: OpenAPI remains backend-owned,
+public requests omit credentials, and authorization/execution controls stay
+unavailable. No CMS reimport is needed for this layout change.
+
+Documentation-to-documentation links navigate in place with browser history,
+including back/forward; modified clicks, downloads, external links and same-page
+anchors retain native behavior. The published host shell and documentation strip
+stay mounted while only the reader shows its loading/error state. Late article
+responses are cancelled and cannot replace a newer route. Source publication
+checks run when the strip mounts, configuration changes, or the user retries,
+not on every article transition. Published header arrival does not remount the
+reader. Mermaid is loaded only for articles containing diagrams. These are
+Nexus-owned loading improvements; they do not cache authorization, change
+publication rules, or require backend data imports.
+
+Customize pack names in the owning backend documentation navigation records and
+publish normally. A new reader Site also needs a frontend route binding, as it did
+before this strip; do not add runtime ports, credentials, content, or customer
+project configuration here. Links support keyboard focus and `aria-current`;
+mobile uses two columns without horizontal page overflow. Focused source-strip
+tests cover published titles, partial failures/retry, response identity, stale
+request cancellation and strict route boundaries.
+
 CMS owns content and publication. Nexus owns only executable renderers and safe
 browser behavior. Partners customize content through backend project modules
 and customize presentation through allowlisted renderers without copying CMS

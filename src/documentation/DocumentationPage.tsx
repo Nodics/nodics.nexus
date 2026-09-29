@@ -1,4 +1,3 @@
-import mermaid from 'mermaid';
 import {
   useCallback,
   useEffect,
@@ -16,23 +15,12 @@ import type {
 } from '../cms/cmsContract';
 import type { NexusRuntimeConfig } from '../runtime/runtimeConfig';
 import { ReadOnlyApiReference } from './ReadOnlyApiReference';
-
-interface DocumentationSource {
-  readonly site: string;
-  readonly title: string;
-}
-
-function documentationSourceForPath(
-  path: string,
-): DocumentationSource | undefined {
-  if (path === '/docs' || path.startsWith('/docs/framework'))
-    return { site: 'nodicsDocumentationSite', title: 'Nodics Documentation' };
-  if (path.startsWith('/docs/nodics-axis'))
-    return { site: 'axisDocumentationSite', title: 'Nodics Axis' };
-  if (path.startsWith('/docs/nodics-kickoff'))
-    return { site: 'kickoffDocumentationSite', title: 'Nodics Kickoff' };
-  return undefined;
-}
+import {
+  documentationSourceForPath,
+  isApiDocumentationPath,
+} from './documentationRoutes';
+import { DocumentationSourceNavigation } from './DocumentationSourceNavigation';
+import { DocumentationHero } from './DocumentationHero';
 
 type State =
   | { status: 'loading' }
@@ -139,24 +127,28 @@ function DocumentationDiagram({
 
   useEffect(() => {
     let active = true;
-    mermaid.initialize({
-      startOnLoad: false,
-      securityLevel: 'strict',
-      theme: 'base',
-      themeVariables: {
-        background: '#ffffff',
-        fontFamily: 'Inter, system-ui, sans-serif',
-        primaryColor: '#fff7dc',
-        primaryBorderColor: '#f7c600',
-        primaryTextColor: '#17191c',
-        lineColor: '#6b7280',
-        secondaryColor: '#ecfdf5',
-        tertiaryColor: '#eff6ff',
-      },
-    });
-    mermaid
-      .render(`nexusDocsDiagram${diagramId}`, diagramText)
-      .then((result) => {
+    void import('mermaid')
+      .then(async ({ default: mermaid }) => {
+        if (!active) return;
+        mermaid.initialize({
+          startOnLoad: false,
+          securityLevel: 'strict',
+          theme: 'base',
+          themeVariables: {
+            background: '#ffffff',
+            fontFamily: 'Inter, system-ui, sans-serif',
+            primaryColor: '#fff7dc',
+            primaryBorderColor: '#f7c600',
+            primaryTextColor: '#17191c',
+            lineColor: '#6b7280',
+            secondaryColor: '#ecfdf5',
+            tertiaryColor: '#eff6ff',
+          },
+        });
+        const result = await mermaid.render(
+          `nexusDocsDiagram${diagramId}`,
+          diagramText,
+        );
         if (!active) return;
         setSvg(result.svg);
         setError('');
@@ -329,11 +321,19 @@ export function DocumentationPage({
   readonly path: string;
 }) {
   const source = useMemo(() => documentationSourceForPath(path), [path]);
-  const [state, setState] = useState<State>({ status: 'loading' });
+  const [snapshot, setSnapshot] = useState<{
+    config: NexusRuntimeConfig;
+    path: string;
+    state: State;
+  }>();
+  const state: State =
+    snapshot?.config === config && snapshot.path === path
+      ? snapshot.state
+      : { status: 'loading' };
   const articleScrollRef = useRef<HTMLElement>(null);
   const layoutRef = useRef<HTMLDivElement>(null);
   const scrollToArticleAnchor = useCallback((hash: string) => {
-    if (window.innerWidth <= 850 || !hash.startsWith('#')) return false;
+    if (!hash.startsWith('#')) return false;
     let anchor: string;
     try {
       anchor = decodeURIComponent(hash.slice(1));
@@ -343,6 +343,10 @@ export function DocumentationPage({
     const panel = articleScrollRef.current;
     const target = document.getElementById(anchor);
     if (!panel || !target || !panel.contains(target)) return false;
+    if (window.innerWidth <= 850) {
+      target.scrollIntoView({ block: 'start', behavior: 'instant' });
+      return true;
+    }
     layoutRef.current?.scrollIntoView({ block: 'start', behavior: 'instant' });
     panel.scrollTop +=
       target.getBoundingClientRect().top -
@@ -364,8 +368,13 @@ export function DocumentationPage({
     window.addEventListener('hashchange', followHash);
     return () => window.removeEventListener('hashchange', followHash);
   }, [scrollToArticleAnchor]);
-  const [query, setQuery] = useState('');
-  const [audience, setAudience] = useState('');
+  const [filters, setFilters] = useState({
+    site: source?.site,
+    query: '',
+    audience: '',
+  });
+  const { query, audience } =
+    filters.site === source?.site ? filters : { query: '', audience: '' };
   const [navigationWidth, setNavigationWidth] = useState(
     initialNavigationWidth,
   );
@@ -417,20 +426,34 @@ export function DocumentationPage({
       timeoutMs: config.requestTimeoutMs,
       signal: controller.signal,
     })
-      .then((page) => setState({ status: 'ready', page }))
+      .then((page) => {
+        if (!controller.signal.aborted)
+          setSnapshot({ config, path, state: { status: 'ready', page } });
+      })
       .catch((error: unknown) => {
         if (!controller.signal.aborted)
-          setState({
-            status: 'failed',
-            message: documentationFailureMessage(error),
+          setSnapshot({
+            config,
+            path,
+            state: {
+              status: 'failed',
+              message: documentationFailureMessage(error),
+            },
           });
       });
     return () => controller.abort();
   }, [config, path, source]);
-  if (path === '/docs/api' || path === '/docs/swaggers')
+  if (isApiDocumentationPath(path))
     return (
-      <div className="docs-api-page">
-        <ReadOnlyApiReference config={config} />
+      <div className="docs-detail-page docs-api-page">
+        <DocumentationHero
+          title="Swagger"
+          summary="Explore the public Nodics API contracts, operations, parameters and responses."
+        />
+        <DocumentationSourceNavigation config={config} path={path} />
+        <div className="docs-api-layout">
+          <ReadOnlyApiReference config={config} />
+        </div>
       </div>
     );
   if (!source)
@@ -444,20 +467,32 @@ export function DocumentationPage({
     );
   if (state.status === 'loading')
     return (
-      <div className="page-state">
-        <span className="loader" />
-        Loading documentation…
+      <div className="docs-detail-page">
+        {!embedded && <DocumentationHero title={source.title} summary="" />}
+        {!embedded && (
+          <DocumentationSourceNavigation config={config} path={path} />
+        )}
+        <div className="page-state" role="status" aria-busy="true">
+          <span className="loader" />
+          Loading documentation…
+        </div>
       </div>
     );
   if (state.status === 'failed')
     return (
-      <section className="page-state" role="alert">
-        <h1>Documentation unavailable</h1>
-        <p>{state.message}</p>
-        <a className="button button-primary" href="/docs">
-          Back to Wiki
-        </a>
-      </section>
+      <div className="docs-detail-page docs-unavailable-page">
+        {!embedded && <DocumentationHero title={source.title} summary="" />}
+        {!embedded && (
+          <DocumentationSourceNavigation config={config} path={path} />
+        )}
+        <section className="page-state" role="alert">
+          <h1>Documentation unavailable</h1>
+          <p>{state.message}</p>
+          <a className="button button-primary" href="/docs">
+            Back to Wiki
+          </a>
+        </section>
+      </div>
     );
   const page = state.page.page;
   if (
@@ -577,7 +612,13 @@ export function DocumentationPage({
             }
             type="search"
             value={query}
-            onChange={(event) => setQuery(event.target.value)}
+            onChange={(event) =>
+              setFilters({
+                site: source.site,
+                audience,
+                query: event.target.value,
+              })
+            }
           />
         </label>
         <div
@@ -590,7 +631,11 @@ export function DocumentationPage({
               key={item}
               type="button"
               onClick={() =>
-                setAudience((current) => (current === item ? '' : item))
+                setFilters({
+                  site: source.site,
+                  query,
+                  audience: audience === item ? '' : item,
+                })
               }
             >
               {item}
@@ -729,25 +774,15 @@ export function DocumentationPage({
   if (embedded) return layout;
   return (
     <div className="docs-detail-page">
-      <section className="secondary-page-hero docs-detail-hero">
-        <img
-          src="/assets/nodics/docs-hero.png"
-          alt="Nodics documentation workspace"
-        />
-        <div className="secondary-page-hero-shade" aria-hidden="true" />
-        <div className="secondary-page-hero-copy">
-          <p className="eyebrow">Nodics Wiki</p>
-          <h1>{sectionTitle}</h1>
-          <nav className="secondary-page-breadcrumbs" aria-label="Breadcrumb">
-            <a href="/">Home</a>
-            <span>›</span>
-            <a href="/docs">Wiki</a>
-            <span>›</span>
-            <strong>{sectionTitle}</strong>
-          </nav>
-          <p>{articleSummary || articleTitle}</p>
-        </div>
-      </section>
+      <DocumentationHero
+        title={sectionTitle}
+        summary={articleSummary || articleTitle || ''}
+      />
+      <DocumentationSourceNavigation
+        config={config}
+        path={path}
+        currentPage={state.page}
+      />
       {layout}
     </div>
   );

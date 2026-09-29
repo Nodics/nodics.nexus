@@ -1,5 +1,6 @@
 import { render, screen, within } from '@testing-library/react';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
+import { useEffect } from 'react';
 import {
   DEFAULT_NEXUS_SITE_SHELL,
   SiteShell,
@@ -35,6 +36,34 @@ const shell: SiteShellContent = {
 };
 
 describe('Nexus site shell navigation', () => {
+  it('does not remount content when published chrome arrives or becomes unavailable', () => {
+    const mounted = vi.fn();
+    function Reader() {
+      useEffect(mounted, []);
+      return <p>Persistent reader</p>;
+    }
+    const view = render(
+      <SiteShell axisBaseUrl="http://localhost:3100">
+        <Reader />
+      </SiteShell>,
+    );
+    const content = screen.getByText('Persistent reader');
+    const main = screen.getByRole('main');
+    view.rerender(
+      <SiteShell axisBaseUrl="http://localhost:3100" shell={shell}>
+        <Reader />
+      </SiteShell>,
+    );
+    expect(screen.getByText('Persistent reader')).toBe(content);
+    expect(screen.getByRole('main')).toBe(main);
+    view.rerender(
+      <SiteShell axisBaseUrl="http://localhost:3100">
+        <Reader />
+      </SiteShell>,
+    );
+    expect(screen.getByText('Persistent reader')).toBe(content);
+    expect(mounted).toHaveBeenCalledTimes(1);
+  });
   it('marks Products active and links directly to its homepage section', () => {
     window.history.pushState({}, '', '/#products');
     render(
