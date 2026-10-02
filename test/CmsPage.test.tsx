@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react';
+import { fireEvent, render, screen } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { CmsPage } from '../src/app/CmsPage';
 import type {
@@ -92,8 +92,71 @@ describe('Nexus CMS page', () => {
       ).toBeInTheDocument();
       expect(screen.getByText(/cannot reach the service/i)).toBeInTheDocument();
       expect(screen.getByRole('button', { name: 'Try again' })).toBeEnabled();
+      expect(
+        screen.queryByText(/Failed to fetch|CMS delivery returned HTTP/),
+      ).toBeNull();
     },
   );
+
+  it('retries the same admitted CMS page only after an explicit action and renders recovered content', async () => {
+    const request = vi
+      .spyOn(globalThis, 'fetch')
+      .mockRejectedValueOnce(new TypeError('Failed to fetch'))
+      .mockResolvedValueOnce(
+        new Response(
+          JSON.stringify({
+            result: {
+              contractVersion: 0,
+              site: mapping.siteCode,
+              path: '/support',
+              locale: 'en',
+              channel: 'web',
+              page: {
+                code: 'support',
+                renderer: 'nexus.page.standard',
+                rendererContractVersion: 1,
+                rendererChannels: ['web'],
+                rendererDeprecated: false,
+                templateContract: {
+                  code: 'corporate',
+                  renderer: 'nexus.template.corporate',
+                  contractVersion: 1,
+                },
+                components: [
+                  cmsComponent(
+                    'supportContent',
+                    'nexus.component.content',
+                    {
+                      heading: 'Published support',
+                      body: 'Published response',
+                    },
+                    0,
+                  ),
+                ],
+              },
+            },
+          }),
+          { status: 200 },
+        ),
+      );
+    render(<CmsPage config={config} mapping={mapping} path="/support" />);
+    const retry = await screen.findByRole('button', { name: 'Try again' });
+    expect(request).toHaveBeenCalledTimes(1);
+    expect(screen.queryByText(/Failed to fetch/)).toBeNull();
+    fireEvent.click(retry);
+    expect(screen.queryByRole('button', { name: 'Try again' })).toBeNull();
+    expect(
+      await screen.findByRole('heading', { name: 'Published support' }),
+    ).toBeVisible();
+    expect(request).toHaveBeenCalledTimes(2);
+    expect(String(request.mock.calls[1]?.[0])).toBe(
+      String(request.mock.calls[0]?.[0]),
+    );
+    expect(request.mock.calls[1]?.[1]).toMatchObject({
+      credentials: 'omit',
+      cache: 'no-store',
+    });
+  });
 
   it('shows a maintenance state for an unpublished home page route', async () => {
     vi.spyOn(globalThis, 'fetch').mockResolvedValueOnce(

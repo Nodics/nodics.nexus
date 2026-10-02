@@ -23,7 +23,6 @@ type State =
   | {
       status: 'failed';
       kind: CmsPageDeliveryErrorKind;
-      message: string;
     };
 
 function fallbackContent(kind: CmsPageDeliveryErrorKind, path: string) {
@@ -113,10 +112,6 @@ export function CmsPage({
               error instanceof CmsPageDeliveryError
                 ? error.kind
                 : 'service-unavailable',
-            message:
-              error instanceof Error
-                ? error.message
-                : 'Nexus content is unavailable',
           });
       });
     return () => controller.abort();

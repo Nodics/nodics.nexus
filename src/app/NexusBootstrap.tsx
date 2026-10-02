@@ -17,8 +17,10 @@ const DocumentationPage = lazy(() =>
 type State =
   | { status: 'loading' }
   | { status: 'ready'; config: NexusRuntimeConfig; mapping: NexusHostMapping }
-  | { status: 'failed'; message: string };
+  | { status: 'failed' };
+/** Loads public configuration before CMS; explicit retry never bypasses bootstrap or host validation. */
 export function NexusBootstrap() {
+  const [attempt, setAttempt] = useState(0);
   const [state, setState] = useState<State>({ status: 'loading' });
   const [path, setPath] = useState(
     () => window.location.pathname.replace(/\/+$/u, '') || '/',
@@ -78,32 +80,44 @@ export function NexusBootstrap() {
   useEffect(() => {
     const controller = new AbortController();
     void loadNexusRuntimeConfig(controller.signal)
-      .then((config) =>
+      .then((config) => {
+        if (controller.signal.aborted) return;
         setState({
           status: 'ready',
           config,
           mapping: resolveHostMapping(config, window.location.hostname),
-        }),
-      )
-      .catch((error: unknown) => {
-        if (!controller.signal.aborted)
-          setState({
-            status: 'failed',
-            message:
-              error instanceof Error
-                ? error.message
-                : 'Nexus configuration failed',
-          });
+        });
+      })
+      .catch(() => {
+        if (!controller.signal.aborted) setState({ status: 'failed' });
       });
     return () => controller.abort();
-  }, []);
+  }, [attempt]);
   if (state.status === 'loading')
-    return <main className="page-state">Preparing Nodics Nexus…</main>;
+    return (
+      <main className="page-state" role="status">
+        Preparing Nodics Nexus…
+      </main>
+    );
   if (state.status === 'failed')
     return (
-      <main className="page-state" role="alert">
-        <h1>Nodics Nexus is unavailable.</h1>
-        <p>{state.message}</p>
+      <main className="page-state page-state-service" role="alert">
+        <div className="service-state-panel">
+          <h1>Nexus is temporarily unavailable.</h1>
+          <p>We cannot open the site right now. Please try again shortly.</p>
+          <div className="service-state-actions">
+            <button
+              type="button"
+              className="button button-primary"
+              onClick={() => {
+                setState({ status: 'loading' });
+                setAttempt((value) => value + 1);
+              }}
+            >
+              Try again
+            </button>
+          </div>
+        </div>
       </main>
     );
   if (path === '/docs' || path.startsWith('/docs/'))

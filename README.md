@@ -21,6 +21,17 @@ Run `npm ci` and `npm run dev` in this repository. Nexus starts independently
 of backend services and displays its own service-unavailable/retry state when
 Online CMS cannot be reached. Its tests run here with `npm test`.
 
+Public bootstrap outages use the same frontend recovery presentation: a generic
+site-unavailable message and an explicit Try again action, never raw transport or
+configuration diagnostics. Retry reloads public configuration and revalidates the
+deployment host mapping before CMS delivery; it does not substitute business
+content, cached endpoints or another Site. Pending work is cancelled on unmount.
+CMS delivery retains its own explicit retry and page-not-found handling.
+These neutral offline fallbacks belong to the frontend because published copy
+cannot be fetched during an outage; normal page copy remains CMS-owned.
+`test/NexusBootstrap.test.tsx` and `test/CmsPage.test.tsx` cover recovery, diagnostic
+redaction, fail-closed host admission and unchanged public request scope.
+
 Start the backend separately. In Axis, initialize Nexus through **Setup &
 Accelerators** and approve its immutable Staged publication. Nexus reads only
 approved Online content. See [independent Docker startup](docker/README.md).

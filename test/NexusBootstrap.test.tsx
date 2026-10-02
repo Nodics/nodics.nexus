@@ -65,6 +65,79 @@ afterEach(() => {
 });
 
 describe('Nexus bootstrap routing', () => {
+  it('offers explicit bootstrap recovery without exposing transport diagnostics or skipping configuration', async () => {
+    window.history.replaceState({}, '', '/docs/framework');
+    let finish!: (value: NexusRuntimeConfig) => void;
+    const pending = new Promise<NexusRuntimeConfig>((resolve) => {
+      finish = resolve;
+    });
+    vi.mocked(loadNexusRuntimeConfig)
+      .mockRejectedValueOnce(new TypeError('Failed to fetch'))
+      .mockReturnValueOnce(pending);
+    vi.mocked(resolveHostMapping).mockReturnValue(mapping);
+    vi.mocked(resolveCmsPage).mockRejectedValue(new Error('Not published'));
+    render(<NexusBootstrap />);
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      'Nexus is temporarily unavailable.',
+    );
+    expect(screen.queryByText(/Failed to fetch/)).toBeNull();
+    expect(loadNexusRuntimeConfig).toHaveBeenCalledTimes(1);
+    expect(resolveHostMapping).not.toHaveBeenCalled();
+    expect(resolveCmsPage).not.toHaveBeenCalled();
+    fireEvent.click(screen.getByRole('button', { name: 'Try again' }));
+    expect(screen.getByRole('status')).toHaveTextContent(
+      'Preparing Nodics Nexus',
+    );
+    expect(screen.queryByRole('button', { name: 'Try again' })).toBeNull();
+    await waitFor(() =>
+      expect(loadNexusRuntimeConfig).toHaveBeenCalledTimes(2),
+    );
+    expect(resolveCmsPage).not.toHaveBeenCalled();
+    await act(async () => {
+      finish(config);
+      await pending;
+    });
+    expect(
+      await screen.findByRole('region', { name: 'Documentation content' }),
+    ).toBeVisible();
+    expect(resolveHostMapping).toHaveBeenCalledWith(
+      config,
+      window.location.hostname,
+    );
+    expect(loadNexusRuntimeConfig).toHaveBeenCalledTimes(2);
+    expect(window.location.pathname).toBe('/docs/framework');
+  });
+  it('keeps failed host admission closed after explicit retry and hides internal diagnostics', async () => {
+    vi.mocked(loadNexusRuntimeConfig).mockResolvedValue(config);
+    vi.mocked(resolveHostMapping).mockImplementation(() => {
+      throw new Error('This host is not configured for Nodics Nexus');
+    });
+    render(<NexusBootstrap />);
+    await screen.findByRole('alert');
+    expect(screen.queryByText(/host is not configured/)).toBeNull();
+    fireEvent.click(screen.getByRole('button', { name: 'Try again' }));
+    await screen.findByRole('alert');
+    expect(loadNexusRuntimeConfig).toHaveBeenCalledTimes(2);
+    expect(resolveHostMapping).toHaveBeenCalledTimes(2);
+    expect(resolveCmsPage).not.toHaveBeenCalled();
+  });
+  it('aborts unfinished bootstrap and ignores late success after unmount', async () => {
+    let finish!: (value: NexusRuntimeConfig) => void;
+    const pending = new Promise<NexusRuntimeConfig>((resolve) => {
+      finish = resolve;
+    });
+    vi.mocked(loadNexusRuntimeConfig).mockReturnValueOnce(pending);
+    const view = render(<NexusBootstrap />);
+    const signal = vi.mocked(loadNexusRuntimeConfig).mock.calls[0]?.[0];
+    view.unmount();
+    expect(signal?.aborted).toBe(true);
+    await act(async () => {
+      finish(config);
+      await pending;
+    });
+    expect(resolveHostMapping).not.toHaveBeenCalled();
+    expect(resolveCmsPage).not.toHaveBeenCalled();
+  });
   it('navigates documentation in place and follows history without reloading bootstrap', async () => {
     window.history.replaceState({}, '', '/docs/framework');
     vi.mocked(loadNexusRuntimeConfig).mockResolvedValue(config);
