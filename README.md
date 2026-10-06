@@ -117,12 +117,12 @@ their allowlisted version 1; other template versions remain unsupported.
 
 `nexus.component.product-portfolio` presents the homepage showcase in compact mode and the `/products` editorial catalogue in dashboard mode. Managed `products` supply titles, descriptions, audiences, capabilities, adoption guidance, safe local detail links, and desktop/mobile Media references. The dashboard filters product entries while retaining the full comparison.
 
-`nexus.component.product-story` renders individual product outcomes, galleries, capabilities, workflows, adoption guidance and FAQs. Both renderers consume WCMS content owned by Kickoff `modules/nexus.web`; they do not load product data from a frontend registry. Unavailable media references render no image, and invalid product destinations do not become navigable links. Customize copy and screenshots in the governed CMS release; customize layout here. Product selectors and galleries support keyboard interaction, and motion respects reduced-motion preferences.
+`nexus.component.product-story` renders individual product outcomes, galleries, capabilities, workflows, adoption guidance and FAQs. Both renderers consume WCMS content owned by the backend Nexus accelerator's `nexus.web` module; they do not load product data from a frontend registry. Unavailable media references render no image, and invalid product destinations do not become navigable links. Customize copy and screenshots in the governed CMS release; customize layout here. Product selectors and galleries support keyboard interaction, and motion respects reduced-motion preferences.
 
 ### Solutions presentation
 
 `nexus.component.solutions` renders a visual homepage overview (`mode: overview`)
-and an expanded solution page (`mode: detail`). Kickoff `nexus.web` owns the
+and an expanded solution page (`mode: detail`). The backend Nexus accelerator's `nexus.web` module owns the
 component copy, entries, flow labels, use cases, scope, delivery steps and links.
 The local renderer owns layout and decorative workflow illustrations; these are
 concept diagrams, not application screenshots. The expanded view includes the
@@ -135,3 +135,18 @@ Staged publication; presentation changes stay in this focused renderer and CSS.
 About links directly to the homepage About section. Features follows it in the
 homepage flow and retains its detail page and footer link, without a separate
 header item or submenu. About remains active for the Features section/page.
+
+## Editorial renderer extension
+
+Nexus provides nine allow-listed renderer keys: listing, card, detail, featured, latest, taxonomy, author, related, and series. They consume only sanitized properties delivered through CMS component contracts and never execute backend-provided markup, scripts, imports, or event handlers.
+
+A customer adds a replacement by implementing a focused React component, registering a project-owned logical key in the local renderer registry, and contributing the matching CMS type-code and renderer-mapping records from the customer backend data pack. Editorial data, workflow, publication, permissions, and delivery filtering remain backend-owned.
+
+The backend Nexus accelerator's `nexus.web` module demonstrates standard listing and detail pages. Its structured source is authoritative; regenerate the backend content pack after changes.
+
+## Documentation ownership
+
+This README owns frontend contributor guidance; do not add a separate `docs/`
+tree. Published content authoring and business guidance are backend-owned. See
+[the Nexus content guide](../../nodics.ai/nodics.docs/docs/pages/applications/nexus-data-content-guide.md)
+and [the reference content module](../../nodics.ai/nodics.accelerators/modules/nexus/modules/nexus.web/README.md).

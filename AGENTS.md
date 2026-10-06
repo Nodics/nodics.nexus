@@ -3,9 +3,9 @@
 - `nodics.nexus` is an independent public frontend. It owns executable React
   renderers, routing presentation, design tokens, accessibility, responsive
   behavior, SEO projection, public runtime configuration, and frontend tests.
-- Kickoff `nexusData` owns backend-importable corporate Sites, catalogs, pages,
-  components, routes, navigation, and renderer mappings. Do not place those
-  records here.
+- The backend Nexus accelerator's `nexus.web` module owns the reference corporate
+  Sites, catalogs, pages, components, routes, navigation and renderer mappings.
+  Customer backend modules own their overlays. Do not place importable records here.
 - Consume only trusted, versioned CMS delivery contracts. Renderer keys are
   allowlisted logical identifiers; never execute CMS-provided HTML, CSS,
   JavaScript, URLs, imports, expressions, or event handlers.
@@ -36,3 +36,17 @@ initialize, accept, or inspect a local customer workspace that includes Nexus.
 Frontend startup is independent of backend health. Keep unavailable/retry UI and
 frontend tests in this application. Backend API acceptance must never start or
 test this frontend. Container deployment is owned by [docker/README.md](docker/README.md).
+
+## Documentation placement
+
+Keep frontend setup, implementation, renderer, customization and verification
+guidance in the root README or the nearest existing source, package, test or
+Docker README. Do not create a separate frontend `docs/` tree or standalone
+product/workflow guides. Keep AGENTS files focused on agent instructions and
+preserve code-level JSDoc and focused tests.
+
+Detailed business journeys, administrator guides, backend configuration and
+CMS-importable documentation belong to their backend documentation owners.
+Link to that canonical content rather than copying it here. Before retiring or
+moving guidance, preserve its technical detail and update all references;
+historical test statements are not current acceptance evidence.
