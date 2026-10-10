@@ -21,6 +21,7 @@ import {
 } from './documentationRoutes';
 import { DocumentationSourceNavigation } from './DocumentationSourceNavigation';
 import { DocumentationHero } from './DocumentationHero';
+import { mediaImageSource } from '../cms/referenceImages';
 
 type State =
   | { status: 'loading' }
@@ -188,8 +189,10 @@ function DocumentationDiagram({
 
 function DocumentationBlock({
   block,
+  cmsBaseUrl,
 }: {
   readonly block: Record<string, unknown>;
+  readonly cmsBaseUrl: string;
 }) {
   const kind = safeText(block.kind);
   const text = safeText(block.text);
@@ -208,14 +211,26 @@ function DocumentationBlock({
     );
   if (kind === 'diagram') return <DocumentationDiagram block={block} />;
   if (kind === 'image') {
-    const source = safeDocumentationUrl(safeText(block.source), true);
+    const mediaCode = safeText(block.mediaCode);
+    const source =
+      block.mediaCode !== undefined
+        ? /^[A-Za-z0-9][A-Za-z0-9_.-]{0,159}$/.test(mediaCode)
+          ? mediaImageSource(mediaCode, cmsBaseUrl)
+          : undefined
+        : safeDocumentationUrl(safeText(block.source), true);
     const alt =
       safeText(block.alt) ||
       safeText(block.title) ||
       'Documentation illustration';
     return source ? (
       <figure className="docs-image">
-        <img src={source} alt={alt} loading="lazy" />
+        <img
+          src={source}
+          alt={alt}
+          loading="lazy"
+          referrerPolicy="no-referrer"
+          crossOrigin="anonymous"
+        />
         {block.caption ? (
           <figcaption>{inlineText(safeText(block.caption))}</figcaption>
         ) : null}
@@ -753,6 +768,7 @@ export function DocumentationPage({
         {blocks.map((block, index) =>
           block && typeof block === 'object' && !Array.isArray(block) ? (
             <DocumentationBlock
+              cmsBaseUrl={config.endpoints.cms}
               block={block as Record<string, unknown>}
               key={index}
             />

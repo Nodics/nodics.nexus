@@ -383,13 +383,19 @@ describe('Nexus documentation page', () => {
                 },
                 {
                   kind: 'image',
-                  source: '/documentation/runtime.png',
+                  mediaCode: 'runtime-diagram',
                   alt: 'Runtime overview',
                 },
                 {
                   kind: 'image',
                   source: 'javascript:alert(1)',
                   alt: 'Unsafe image',
+                },
+                {
+                  kind: 'image',
+                  mediaCode: 'https://untrusted.test/image.png',
+                  source: '/documentation/allowed.png',
+                  alt: 'Invalid Media reference',
                 },
                 {
                   kind: 'table',
@@ -442,7 +448,16 @@ describe('Nexus documentation page', () => {
     ).not.toBeInTheDocument();
     expect(
       screen.getByRole('img', { name: 'Runtime overview' }),
-    ).toHaveAttribute('src', '/documentation/runtime.png');
+    ).toHaveAttribute(
+      'src',
+      'http://localhost:4310/nodics/media/v0/content/runtime-diagram',
+    );
+    expect(
+      screen.getByRole('img', { name: 'Runtime overview' }),
+    ).toHaveAttribute('crossorigin', 'anonymous');
+    expect(
+      screen.queryByRole('img', { name: 'Invalid Media reference' }),
+    ).not.toBeInTheDocument();
     expect(
       screen.queryByRole('img', { name: 'Unsafe image' }),
     ).not.toBeInTheDocument();

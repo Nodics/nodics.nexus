@@ -48,8 +48,9 @@ detailed `/products` dashboard and `/solutions` page.
 Additional routes cover About, Platform, Developers, Ecosystem, Testimonials,
 Contact, Privacy, Terms, and Cookies. Public documentation links resolve to
 the approved Online documentation catalogue. Its renderer supports safe inline
-links, images, tables and diagrams; source-file links are resolved by the owning
-content-pack generator. Authoring-only visual requirements stay in the delivery
+links, Media-backed images, tables and diagrams. Documentation is maintained
+directly in backend CMS data; there is no separate source-page generator.
+Authoring-only visual requirements stay in the delivery
 metadata. Wiki, News, Blogs, and commerce
 accelerator storefronts remain separate journeys.
 
