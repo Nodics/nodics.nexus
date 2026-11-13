@@ -485,7 +485,11 @@ export function DocumentationPage({
       <div className="docs-detail-page">
         {!embedded && <DocumentationHero title={source.title} summary="" />}
         {!embedded && (
-          <DocumentationSourceNavigation config={config} path={path} />
+          <DocumentationSourceNavigation
+            config={config}
+            path={path}
+            currentPageLoading
+          />
         )}
         <div className="page-state" role="status" aria-busy="true">
           <span className="loader" />
@@ -527,7 +531,7 @@ export function DocumentationPage({
   );
   const items = navigation ? navigationItems(navigation) : [];
   const audiences = [...new Set(items.flatMap((item) => item.audience))].sort();
-  const normalizedQuery = query.trim().toLocaleLowerCase();
+  const searchTerms = query.toLocaleLowerCase().match(/[^\s]+/g) ?? [];
   const filteredItems = items.filter((item) => {
     const searchable = [
       item.title,
@@ -538,7 +542,7 @@ export function DocumentationPage({
       .join(' ')
       .toLocaleLowerCase();
     return (
-      (!normalizedQuery || searchable.includes(normalizedQuery)) &&
+      searchTerms.every((term) => searchable.includes(term)) &&
       (!audience || item.audience.includes(audience))
     );
   });
@@ -576,7 +580,6 @@ export function DocumentationPage({
   const articleTitle = safeText(article?.properties.title) || page.name;
   const maturityState = safeText(article?.properties.maturityState);
   const accessMode = safeText(article?.properties.accessMode);
-  const lifecycleState = safeText(article?.properties.lifecycleState);
   const audienceItems = Array.isArray(article?.properties.audience)
     ? article.properties.audience.map(safeText).filter(Boolean)
     : [];
@@ -743,7 +746,6 @@ export function DocumentationPage({
           ))}
           {maturityState ? <span>{maturityState}</span> : null}
           {accessMode ? <span>{accessMode}</span> : null}
-          {lifecycleState ? <span>{lifecycleState}</span> : null}
         </div>
         <h1>{articleTitle}</h1>
         {articleSummary ? (

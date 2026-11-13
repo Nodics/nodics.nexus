@@ -1,3 +1,4 @@
+import { useNexusUi } from '../runtime/nexusUi';
 export interface SocialChannel {
   readonly name: string;
   readonly href: string;
@@ -32,8 +33,9 @@ export function SocialLinks({
 }: {
   readonly channels?: readonly SocialChannel[];
 }) {
+  const ui = useNexusUi();
   return (
-    <div className="social-links" aria-label="Nodics social channels">
+    <div className="social-links" aria-label={ui.socialChannels}>
       {channels
         .filter((channel) => channel.href)
         .map((channel) => (
@@ -42,7 +44,7 @@ export function SocialLinks({
             href={channel.href}
             target="_blank"
             rel="noreferrer"
-            aria-label={`Nodics on ${channel.name}`}
+            aria-label={`${ui.socialOn} ${channel.name}`}
             title={channel.name}
           >
             <svg aria-hidden="true" viewBox="0 0 24 24">

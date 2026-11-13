@@ -151,3 +151,43 @@ This README owns frontend contributor guidance; do not add a separate `docs/`
 tree. Published content authoring and business guidance are backend-owned. See
 [the Nexus content guide](../../nodics.ai/nodics.docs/docs/pages/applications/nexus-data-content-guide.md)
 and [the reference content module](../../nodics.ai/nodics.accelerators/modules/nexus/modules/nexus.web/README.md).
+
+The Nexus hero and shared content/card section heading renderers prefer the CMS-declared `title` property, including its resolved locale variant, and retain `heading` as the legacy source fallback. This aligns Axis-authored content with the existing localized type contract. Text remains React-escaped; renderer keys, host/Site admission and Online publication gates are unchanged.
+
+Both registered hero renderer IDs (`nexus.component.page-hero` and `nexus.hero`)
+count as delivered page heroes. A standard page uses its fallback banner only
+when no delivered hero is present, preventing duplicated H1 banners for pages
+created in Axis Designer. Page and template renderer admission remain separate.
+
+Public Blog and News links use one bounded slug segment. An exact published CMS
+page remains authoritative for its composition. Only a CMS route-not-found result
+on these registered paths hands off to the public Editorial owner; denied, failed
+or incompatible CMS reads never trigger that handoff. Host mapping supplies the
+Site and public bootstrap supplies the endpoint. The reader checks article identity,
+Site, locale, slug and content type, renders the exact published body, and retires
+old responses when scope changes. A missing or withdrawn article shows an explicit
+not-available state; service failures offer manual GET recovery. PublishedSiteShell
+reuses current host navigation, as for independently published documentation.
+Partners extend editorialRoutes/EditorialArticleView for route presentation without
+creating per-article CMS records, a browser publication registry or backend authority.
+A successful live Editorial detail response can shorten the story and clears old
+CMS story sections; body length is never a publication or freshness rule. Existing
+CMS-only detail content remains separately published CMS content when no live
+article is returned; it is not proof of an Editorial publication.
+
+Independent article pages request SiteShell's solid header presentation, reserving
+its height before the published navigation arrives. This keeps the existing
+reverse Nodics mark and menu readable on the light article surface. Other page
+header modes remain controlled by their existing composition.
+
+The article's semantic reading order places its title and story before the
+metadata/takeaway sidebar. Desktop CSS retains the sidebar column; narrow screens
+follow the same title-first order without duplicating headings or body content.
+
+Published Nexus header content can supply `languages` entries (`locale`, `label`, safe local `href`). The `lang` URL query controls presentation only; host admission still selects the Site and the CMS owner validates locale availability. Language changes follow ordinary browser navigation/history, set document language and direction, and never change tenant or catalog. Arabic homepage links explicitly identify detail and guide content available in English. Contact field translations may change labels only; the Engagement owner retains field identities, validation and submission authority.
+
+Carousel renderers expose keyboard-operable previous/next and persistent pause controls. Automatic rotation stops for the operating system reduced-motion preference, including preference changes during a visit. Cloned publication cards are inert, and unavailable live Editorial lists expose Retry instead of an empty-content claim. Article/listing round trips retain the selected delivery locale.
+The hero requests only the active slide image; inactive full-resolution images do not compete with initial content. Each slide keeps its governed Media reference and is fetched when selected.
+The documentation-area strip reuses the current published article for its own source and defers that source while the article is loading. It reads other pack roots independently and checks the root separately only if the article fails; source availability is never inferred from a route name. This avoids duplicate large Online delivery reads without adding a publication cache.
+
+Nested public content uses the same allowlisted renderer, version, channel and visibility checks as root content, in the saved child order. A hidden or incompatible parent cannot expose its children. Carousel renderers own their slides and are excluded from generic child rendering to prevent duplicates. Custom containers must declare this child ownership explicitly; `test/RendererRegistry.test.tsx` protects nested ordering and admission.

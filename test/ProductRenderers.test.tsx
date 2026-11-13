@@ -153,3 +153,47 @@ describe('Product visual tour', () => {
     Reflect.deleteProperty(HTMLDialogElement.prototype, 'close');
   });
 });
+
+it('preserves approved Arabic labels and uses visual-direction keyboard navigation', async () => {
+  const previous = window.location.pathname + window.location.search;
+  window.history.replaceState({}, '', '/?lang=ar');
+  try {
+    const user = userEvent.setup();
+    render(
+      <CmsComponentRenderer
+        channel="web"
+        component={component('nexus.component.product-portfolio', {
+          mode: 'compact',
+          contactHref: '/?lang=ar#contact',
+          contactLabel: 'تواصل معنا',
+          products: [
+            {
+              title: 'الأول',
+              href: '/products/first?lang=en',
+              linkLabel: 'استكشف الأول (بالإنجليزية)',
+            },
+            { title: 'الثاني', href: '/products/second?lang=en' },
+            { title: 'الثالث', href: '/products/third?lang=en' },
+          ],
+        })}
+      />,
+    );
+    expect(screen.getByRole('tablist')).toHaveAccessibleName(
+      'استكشف منتجات Nodics',
+    );
+    expect(
+      screen.getByRole('link', { name: 'استكشف الأول (بالإنجليزية)' }),
+    ).toHaveAttribute('href', '/products/first?lang=en');
+    expect(screen.getByRole('link', { name: 'تواصل معنا' })).toHaveAttribute(
+      'href',
+      '/?lang=ar#contact',
+    );
+    screen.getByRole('tab', { name: 'الأول' }).focus();
+    await user.keyboard('{ArrowRight}');
+    expect(screen.getByRole('tab', { name: 'الثالث' })).toHaveFocus();
+    await user.keyboard('{ArrowLeft}');
+    expect(screen.getByRole('tab', { name: 'الأول' })).toHaveFocus();
+  } finally {
+    window.history.replaceState({}, '', previous);
+  }
+});

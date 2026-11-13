@@ -69,6 +69,41 @@ beforeEach(() => {
     .mockImplementation(async ({ site, path }) => page(site, path));
 });
 describe('documentation source strip', () => {
+  it('defers the active source to its pending article without duplicating its large delivery request', async () => {
+    const view = render(
+      <DocumentationSourceNavigation
+        config={config}
+        path="/docs/framework"
+        currentPageLoading
+      />,
+    );
+    await screen.findByRole('link', {
+      name: 'axisDocumentationSite published title',
+    });
+    expect(resolveCmsPage).toHaveBeenCalledTimes(2);
+    expect(
+      vi
+        .mocked(resolveCmsPage)
+        .mock.calls.some(([args]) => args.site === 'nodicsDocumentationSite'),
+    ).toBe(false);
+    view.rerender(
+      <DocumentationSourceNavigation
+        config={config}
+        path="/docs/framework"
+        currentPage={page('nodicsDocumentationSite', '/docs/framework')}
+      />,
+    );
+    expect(
+      screen.getByRole('link', {
+        name: 'nodicsDocumentationSite published title',
+      }),
+    ).toBeVisible();
+    expect(resolveCmsPage).toHaveBeenCalledTimes(2);
+    view.rerender(
+      <DocumentationSourceNavigation config={config} path="/docs/framework" />,
+    );
+    await waitFor(() => expect(resolveCmsPage).toHaveBeenCalledTimes(3));
+  });
   it('uses Online titles and the existing route bindings, reusing the current page', async () => {
     const currentPage = page('nodicsDocumentationSite', '/docs');
     render(
@@ -97,7 +132,7 @@ describe('documentation source strip', () => {
       'href',
       '/docs/swaggers',
     );
-    expect(resolveCmsPage).toHaveBeenCalledTimes(3);
+    expect(resolveCmsPage).toHaveBeenCalledTimes(2);
     expect(resolveCmsPage).toHaveBeenCalledWith(
       expect.objectContaining({
         cmsBaseUrl: config.endpoints.cms,

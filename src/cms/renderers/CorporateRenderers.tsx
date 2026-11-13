@@ -1,3 +1,5 @@
+import { useCarouselMotion } from './useCarouselMotion';
+import { useNexusUi, nexusLocaleHref, nexusUi } from '../../runtime/nexusUi';
 import {
   useEffect,
   useId,
@@ -82,7 +84,13 @@ const Link = ({
 const Header = ({ component }: Props) => (
   <header className="section-heading">
     <p className="eyebrow">{text(component.properties, 'kicker')}</p>
-    <h2>{text(component.properties, 'heading')}</h2>
+    <h2>
+      {text(
+        component.properties,
+        'title',
+        text(component.properties, 'heading'),
+      )}
+    </h2>
   </header>
 );
 const ReferenceImage = ({
@@ -124,9 +132,9 @@ const BannerImages = ({
         return source ? (
           <img
             className={`hero-reference-image${index === activeSlide ? ` is-active effect-${transitionEffect}` : ''}`}
-            src={source}
+            src={index === activeSlide ? source : undefined}
             alt=""
-            loading="eager"
+            loading={index === activeSlide ? 'eager' : 'lazy'}
             decoding="async"
             fetchPriority={index === 0 ? 'high' : 'auto'}
             key={slide.code}
@@ -204,7 +212,11 @@ export function PageHeroRenderer({ component }: Props) {
     text(p, 'referenceImageCode'),
     runtime?.config.endpoints.cms,
   );
-  const currentLabel = text(p, 'breadcrumbLabel', text(p, 'heading'));
+  const currentLabel = text(
+    p,
+    'breadcrumbLabel',
+    text(p, 'title', text(p, 'heading')),
+  );
   const parentHref = text(p, 'breadcrumbParentHref');
   const parentLabel = text(p, 'breadcrumbParentLabel');
   const showParent = /^\/(?!\/)[^\\\s]*$/u.test(parentHref) && parentLabel;
@@ -217,7 +229,9 @@ export function PageHeroRenderer({ component }: Props) {
       <div className="secondary-page-hero-shade" aria-hidden="true" />
       <div className="secondary-page-hero-copy">
         <p className="eyebrow">{text(p, 'kicker', 'Nodics Nexus')}</p>
-        <h1 id={`${component.code}-title`}>{text(p, 'heading')}</h1>
+        <h1 id={`${component.code}-title`}>
+          {text(p, 'title', text(p, 'heading'))}
+        </h1>
         <nav className="secondary-page-breadcrumbs" aria-label="Breadcrumb">
           <a href="/">Home</a>
           <span aria-hidden="true">›</span>
@@ -236,6 +250,8 @@ export function PageHeroRenderer({ component }: Props) {
 }
 
 export function BannerCarouselRenderer({ component }: Props) {
+  const ui = useNexusUi();
+  const motion = useCarouselMotion();
   const p = component.properties;
   const slides = component.components.filter(
     (child) =>
@@ -264,10 +280,7 @@ export function BannerCarouselRenderer({ component }: Props) {
   const randomTransitions = text(p, 'transitionStrategy') === 'RANDOM';
 
   useEffect(() => {
-    const reducedMotion =
-      typeof window.matchMedia === 'function' &&
-      window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-    if (reducedMotion || !automaticRotation || slides.length < 2)
+    if (motion.stopped || !automaticRotation || slides.length < 2)
       return undefined;
     let slideTimeout: number | undefined;
     let revealTimeout: number | undefined;
@@ -289,6 +302,7 @@ export function BannerCarouselRenderer({ component }: Props) {
       if (revealTimeout !== undefined) window.clearTimeout(revealTimeout);
     };
   }, [
+    motion.stopped,
     automaticRotation,
     fadeDurationMs,
     intervalMs,
@@ -315,6 +329,46 @@ export function BannerCarouselRenderer({ component }: Props) {
         } as CSSProperties
       }
     >
+      {slides.length > 1 ? (
+        <div className="hero-controls">
+          <button
+            type="button"
+            className="carousel-control"
+            aria-label={ui.previous}
+            onClick={() => {
+              motion.setPaused(true);
+              setTextVisible(true);
+              setActiveSlide((v) => (v - 1 + slides.length) % slides.length);
+            }}
+          >
+            ←
+          </button>
+          {automaticRotation && !motion.reduced ? (
+            <button
+              type="button"
+              className="carousel-control"
+              onClick={() => {
+                setTextVisible(true);
+                motion.setPaused(!motion.paused);
+              }}
+            >
+              {motion.paused ? ui.resumeRotation : ui.pauseRotation}
+            </button>
+          ) : null}
+          <button
+            type="button"
+            className="carousel-control"
+            aria-label={ui.next}
+            onClick={() => {
+              motion.setPaused(true);
+              setTextVisible(true);
+              setActiveSlide((v) => (v + 1) % slides.length);
+            }}
+          >
+            →
+          </button>
+        </div>
+      ) : null}
       <BannerImages
         slides={slides}
         activeSlide={activeSlide}
@@ -326,7 +380,7 @@ export function BannerCarouselRenderer({ component }: Props) {
         <i />
       </div>
       <div
-        className={`hero-content effect-${transitionEffect}${textVisible ? ' is-visible' : ' is-hidden'}`}
+        className={`hero-content effect-${transitionEffect}${textVisible || motion.stopped ? ' is-visible' : ' is-hidden'}`}
         key={activeSlide}
       >
         <BannerSlideContent
@@ -339,6 +393,7 @@ export function BannerCarouselRenderer({ component }: Props) {
 }
 
 export function ContentRenderer({ component }: Props) {
+  const ui = useNexusUi();
   const p = component.properties;
   const href = text(p, 'href');
   const anchor = text(p, 'anchor');
@@ -409,7 +464,7 @@ export function ContentRenderer({ component }: Props) {
               </div>
             ) : null}
             {metrics.length ? (
-              <div className="about-metrics" aria-label="Nodics principles">
+              <div className="about-metrics" aria-label={ui.principles}>
                 {metrics.map((metric, index) => (
                   <div key={`${component.code}-metric-${index}`}>
                     <strong>
@@ -586,7 +641,7 @@ export function ContentRenderer({ component }: Props) {
           </div>
         ) : null}
         {metrics.length ? (
-          <div className="about-metrics" aria-label="Nodics principles">
+          <div className="about-metrics" aria-label={ui.principles}>
             {metrics.map((metric, index) => (
               <div key={`${component.code}-metric-${index}`}>
                 <strong>
@@ -687,9 +742,9 @@ export function CardsRenderer({ component }: Props) {
           {isEcosystemSection ? (
             <div className="ecosystem-statement">
               <p>{text(p, 'body')}</p>
-              <span>Open foundation</span>
-              <span>Project ownership</span>
-              <span>Shared evolution</span>
+              {strings(p, 'statements').map((statement) => (
+                <span key={statement}>{statement}</span>
+              ))}
             </div>
           ) : isAboutMvpSection ? (
             <div className="mvp-scale-statement">
@@ -933,6 +988,8 @@ export function GithubRenderer({ component }: Props) {
 }
 
 export function TestimonialsRenderer({ component }: Props) {
+  const motion = useCarouselMotion();
+  const ui = useNexusUi();
   const p = component.properties;
   const runtime = useOptionalNexusRuntimeConfig();
   const staticTestimonials = items<TestimonialCard>(p, 'items');
@@ -997,13 +1054,13 @@ export function TestimonialsRenderer({ component }: Props) {
   ]);
 
   useEffect(() => {
-    if (testimonials.length < 2) return undefined;
+    if (motion.stopped || testimonials.length < 2) return undefined;
     const timer = window.setInterval(
       () => setActive((value) => (value + 1) % testimonials.length),
       11000,
     );
     return () => window.clearInterval(timer);
-  }, [testimonials.length]);
+  }, [motion.stopped, testimonials.length]);
 
   const activeTestimonial = testimonials[active] || testimonials[0];
   const activeAvatar =
@@ -1053,18 +1110,39 @@ export function TestimonialsRenderer({ component }: Props) {
           })}
         </div>
       ) : null}
-      <div className="section-wrap testimonial-stage">
+      <div
+        className="section-wrap testimonial-stage"
+        onFocusCapture={(event) => {
+          if (
+            event.target instanceof HTMLElement &&
+            !event.target.closest('.carousel-control')
+          )
+            motion.setPaused(true);
+        }}
+      >
+        {testimonials.length > 1 && !motion.reduced ? (
+          <button
+            className="carousel-control"
+            type="button"
+            onClick={() => motion.setPaused(!motion.paused)}
+          >
+            {motion.paused ? ui.resumeRotation : ui.pauseRotation}
+          </button>
+        ) : null}
         {testimonials.length ? (
           <>
             <button
               className="testimonial-arrow testimonial-arrow-prev"
               type="button"
               onClick={() => move(-1)}
-              aria-label="Previous testimonial"
+              aria-label={ui.previousTestimonial}
             >
               ←
             </button>
-            <div className="testimonial-carousel" aria-live="polite">
+            <div
+              className="testimonial-carousel"
+              aria-live={motion.stopped ? 'polite' : 'off'}
+            >
               <figure key={`${String(activeTestimonial.name)}-${active}`}>
                 <div className="testimonial-proof">
                   {activeAvatar ? (
@@ -1108,7 +1186,8 @@ export function TestimonialsRenderer({ component }: Props) {
                 </figcaption>
                 <div
                   className="testimonial-rating"
-                  aria-label="Five star testimonial"
+                  role="img"
+                  aria-label={ui.fiveStars}
                 >
                   <span aria-hidden="true">★</span>
                   <span aria-hidden="true">★</span>
@@ -1117,13 +1196,16 @@ export function TestimonialsRenderer({ component }: Props) {
                   <span aria-hidden="true">★</span>
                 </div>
               </figure>
-              <div className="testimonial-dots" aria-label="Choose testimonial">
+              <div
+                className="testimonial-dots"
+                aria-label={ui.chooseTestimonial}
+              >
                 {testimonials.map((testimonial, index) => (
                   <button
                     className={index === active ? 'is-active' : ''}
                     type="button"
                     onClick={() => setActive(index)}
-                    aria-label={`Show testimonial ${index + 1}`}
+                    aria-label={`${ui.showTestimonial} ${index + 1}`}
                     aria-current={index === active ? 'true' : undefined}
                     key={`${String(testimonial.name)}-${index}`}
                   />
@@ -1134,7 +1216,7 @@ export function TestimonialsRenderer({ component }: Props) {
               className="testimonial-arrow testimonial-arrow-next"
               type="button"
               onClick={() => move(1)}
-              aria-label="Next testimonial"
+              aria-label={ui.nextTestimonial}
             >
               →
             </button>
@@ -1180,20 +1262,21 @@ function CarouselControls({
   readonly label: string;
   readonly onMove: (direction: number) => void;
 }) {
+  const ui = useNexusUi();
   return (
     <div className="carousel-controls">
       <span>{`${String(active + 1).padStart(2, '0')} / ${String(count).padStart(2, '0')}`}</span>
       <button
         type="button"
         onClick={() => onMove(-1)}
-        aria-label={`Previous ${label}`}
+        aria-label={`${ui.previous} ${label}`}
       >
         ←
       </button>
       <button
         type="button"
         onClick={() => onMove(1)}
-        aria-label={`Next ${label}`}
+        aria-label={`${ui.next} ${label}`}
       >
         →
       </button>
@@ -1205,6 +1288,7 @@ function EditorialCarousel({
   component,
   variant,
 }: Props & { readonly variant: 'news' | 'blogs' }) {
+  const ui = useNexusUi();
   const runtime = useOptionalNexusRuntimeConfig();
   const staticEntries = useMemo(
     () => items<EditorialCard>(component.properties, 'items'),
@@ -1216,6 +1300,8 @@ function EditorialCarousel({
   );
   const [active, setActive] = useState(0);
   const [autoPaused, setAutoPaused] = useState(false);
+  const motion = useCarouselMotion();
+  const [attempt, setAttempt] = useState(0);
   const [publicationStepPx, setPublicationStepPx] = useState(0);
   const [publicationResetting, setPublicationResetting] = useState(false);
   const publicationGridRef = useRef<HTMLDivElement>(null);
@@ -1276,11 +1362,17 @@ function EditorialCarousel({
             const media = staticEditorialMedia(article, staticEntries);
             return {
               href: article.slug
-                ? `/${variant === 'news' ? 'news' : 'blog'}/${article.slug}`
+                ? nexusLocaleHref(
+                    `/${variant === 'news' ? 'news' : 'blog'}/${article.slug}`,
+                    localeCode,
+                  )
                 : article.href,
               imageAlt: article.imageAlt || media.imageAlt,
-              label: contentTypeCode === 'NEWS' ? 'News' : 'Blog',
-              linkLabel: 'Read more',
+              label:
+                contentTypeCode === 'NEWS'
+                  ? nexusUi(localeCode).news
+                  : nexusUi(localeCode).blog,
+              linkLabel: nexusUi(localeCode).readMore,
               referenceImageCode:
                 article.referenceImageCode || media.referenceImageCode,
               summary: article.summary,
@@ -1306,15 +1398,16 @@ function EditorialCarousel({
     siteCode,
     staticEntries,
     variant,
+    attempt,
   ]);
 
   useEffect(() => {
-    if (autoPaused || entries.length < 2) return undefined;
+    if (autoPaused || motion.stopped || entries.length < 2) return undefined;
     const interval = globalThis.setInterval(() => {
       setActive((value) => value + 1);
     }, autoIntervalMs);
     return () => globalThis.clearInterval(interval);
-  }, [autoIntervalMs, autoPaused, entries.length]);
+  }, [autoIntervalMs, autoPaused, motion.stopped, entries.length]);
 
   useEffect(() => {
     const grid = publicationGridRef.current;
@@ -1367,8 +1460,8 @@ function EditorialCarousel({
     entry && typeof entry.href === 'string' ? safeHref(entry.href) : undefined;
 
   if (variant === 'blogs' || variant === 'news') {
-    const itemLabel = variant === 'news' ? 'news item' : 'blog';
-    const fallbackLabel = variant === 'news' ? 'News' : 'Blog';
+    const itemLabel = variant === 'news' ? ui.news : ui.blog;
+    const fallbackLabel = variant === 'news' ? ui.news : ui.blog;
     const publicationEntries =
       entries.length > 1
         ? [...entries, ...entries.slice(0, Math.min(3, entries.length))]
@@ -1390,15 +1483,27 @@ function EditorialCarousel({
         >
           <div className="blog-publications-heading">
             <Header component={component} />
+            {entries.length > 1 && !motion.reduced ? (
+              <button
+                className="carousel-control"
+                type="button"
+                onClick={() => motion.setPaused(!motion.paused)}
+              >
+                {motion.paused ? ui.resumeRotation : ui.pauseRotation}
+              </button>
+            ) : null}
           </div>
           {entries.length ? (
-            <div className="blog-publications-stage" aria-live="polite">
+            <div
+              className="blog-publications-stage"
+              aria-live={autoPaused || motion.stopped ? 'polite' : 'off'}
+            >
               {entries.length > 1 ? (
                 <button
                   className="blog-publication-arrow blog-publication-arrow-prev"
                   type="button"
                   onClick={() => move(-1)}
-                  aria-label={`Previous ${itemLabel}`}
+                  aria-label={`${ui.previous} ${itemLabel}`}
                 >
                   ←
                 </button>
@@ -1427,6 +1532,7 @@ function EditorialCarousel({
                     return (
                       <article
                         aria-hidden={isClone ? true : undefined}
+                        inert={isClone ? true : undefined}
                         className="blog-publication-card"
                         data-publication-index={index}
                         key={`${title}-${index}`}
@@ -1435,7 +1541,7 @@ function EditorialCarousel({
                           {blogHref ? (
                             <a
                               href={blogHref}
-                              aria-label={`Open ${title || 'blog detail'}`}
+                              aria-label={`${ui.open} ${title || 'blog detail'}`}
                             >
                               {blogSource ? (
                                 <img
@@ -1482,7 +1588,7 @@ function EditorialCarousel({
                             >
                               {typeof blog.linkLabel === 'string'
                                 ? blog.linkLabel
-                                : 'Read more'}
+                                : ui.readMore}
                             </a>
                           ) : null}
                         </div>
@@ -1496,9 +1602,32 @@ function EditorialCarousel({
                   className="blog-publication-arrow blog-publication-arrow-next"
                   type="button"
                   onClick={() => move(1)}
-                  aria-label={`Next ${itemLabel}`}
+                  aria-label={`${ui.next} ${itemLabel}`}
                 >
                   →
+                </button>
+              ) : null}
+            </div>
+          ) : hasLiveEditorial && liveStatus !== 'ready' ? (
+            <div
+              className="empty-note"
+              role={liveStatus === 'failed' ? 'alert' : 'status'}
+            >
+              <p>
+                {liveStatus === 'failed'
+                  ? ui.articlesUnavailable
+                  : ui.loadingArticles}
+              </p>
+              {liveStatus === 'failed' ? (
+                <button
+                  type="button"
+                  className="carousel-control"
+                  onClick={() => {
+                    setLiveStatus('idle');
+                    setAttempt((v) => v + 1);
+                  }}
+                >
+                  {ui.retry}
                 </button>
               ) : null}
             </div>
@@ -1543,7 +1672,7 @@ function EditorialCarousel({
                 <a
                   className="editorial-image-link"
                   href={href}
-                  aria-label={`Open ${typeof entry.title === 'string' ? entry.title : variant === 'news' ? 'news detail' : 'blog detail'}`}
+                  aria-label={`${ui.open} ${typeof entry.title === 'string' ? entry.title : variant === 'news' ? 'news detail' : 'blog detail'}`}
                 >
                   {source ? (
                     <img
@@ -1613,6 +1742,7 @@ export function BlogCarouselRenderer({ component }: Props) {
 }
 
 export function ContactRenderer({ component }: Props) {
+  const ui = useNexusUi();
   const p =
     component.code === 'nexusContactContent'
       ? {
@@ -1713,7 +1843,14 @@ export function ContactRenderer({ component }: Props) {
   const requestTimeoutMs = runtime?.config.requestTimeoutMs;
   const formFields =
     formStatus === 'ready' && liveFormFields.length
-      ? liveFormFields
+      ? liveFormFields.map((field) => {
+          const copy = staticFormFields.find(
+            (candidate) => candidate.name === field.name,
+          );
+          return copy && typeof copy.label === 'string'
+            ? { ...field, label: copy.label }
+            : field;
+        })
       : staticFormFields.map((field, index) => {
           const name =
             typeof field.name === 'string' ? field.name : `field-${index}`;
@@ -1756,9 +1893,7 @@ export function ContactRenderer({ component }: Props) {
     const engagementEndpoint = runtime?.config.endpoints.engagement;
     if (!runtime || !engagementEndpoint || submissionStatus === 'submitting') {
       setSubmissionStatus('failed');
-      setSubmissionMessage(
-        'Submission is not available right now. Please try again shortly.',
-      );
+      setSubmissionMessage(ui.submissionUnavailable);
       return;
     }
     const formElement = event.currentTarget;
@@ -1797,16 +1932,14 @@ export function ContactRenderer({ component }: Props) {
         setSubmissionStatus('submitted');
         setSubmissionMessage(
           submission.referenceCode
-            ? `Request received. Reference: ${submission.referenceCode}`
-            : 'Request received.',
+            ? `${ui.requestReceived} ${ui.reference} ${submission.referenceCode}`
+            : ui.requestReceived,
         );
         formElement.reset();
       })
       .catch(() => {
         setSubmissionStatus('failed');
-        setSubmissionMessage(
-          'Submission is not available right now. Please try again shortly.',
-        );
+        setSubmissionMessage(ui.submissionUnavailable);
       });
   };
 
@@ -1891,7 +2024,7 @@ export function ContactRenderer({ component }: Props) {
                 component={effectiveComponent}
                 className="contact-form-image"
               />
-              <span>Connect · Compose · Evolve</span>
+              <span>{text(p, 'formVisualCaption')}</span>
             </div>
             <div className="contact-form-content">
               <p className="contact-form-kicker">

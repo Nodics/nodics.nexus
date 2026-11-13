@@ -1,4 +1,4 @@
-import { render, screen, within } from '@testing-library/react';
+import { fireEvent, render, screen, within } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 import { useEffect } from 'react';
 import {
@@ -36,6 +36,25 @@ const shell: SiteShellContent = {
 };
 
 describe('Nexus site shell navigation', () => {
+  it('closes narrow navigation with Escape and restores its trigger focus', () => {
+    render(
+      <SiteShell axisBaseUrl="http://localhost:3100" shell={shell}>
+        <p>Content</p>
+      </SiteShell>,
+    );
+    const toggle = screen.getByRole('button', {
+      name: 'Toggle primary navigation',
+    });
+    fireEvent.click(toggle);
+    expect(toggle).toHaveAttribute('aria-expanded', 'true');
+    const docs = within(
+      screen.getByRole('navigation', { name: 'Primary navigation' }),
+    ).getByRole('link', { name: 'Docs' });
+    docs.focus();
+    fireEvent.keyDown(docs, { key: 'Escape' });
+    expect(toggle).toHaveAttribute('aria-expanded', 'false');
+    expect(toggle).toHaveFocus();
+  });
   it('does not remount content when published chrome arrives or becomes unavailable', () => {
     const mounted = vi.fn();
     function Reader() {

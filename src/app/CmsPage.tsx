@@ -15,17 +15,48 @@ import type {
   NexusRuntimeConfig,
 } from '../runtime/runtimeConfig';
 import { SiteShell } from './SiteShell';
+import { PublishedSiteShell } from './PublishedSiteShell';
+import { EditorialArticlePage } from '../editorial/EditorialArticlePage';
+import { EditorialListingPage } from '../editorial/EditorialListingPage';
+import { editorialDetailRoute } from '../editorial/editorialRoutes';
 import { siteShellFromPage } from './siteShellContent';
 
 type State =
   | { status: 'loading' }
-  | { status: 'ready'; page: CmsResolvedPageContract }
+  | { status: 'ready'; identity: string; page: CmsResolvedPageContract }
   | {
       status: 'failed';
+      identity: string;
       kind: CmsPageDeliveryErrorKind;
     };
 
-function fallbackContent(kind: CmsPageDeliveryErrorKind, path: string) {
+function fallbackContent(
+  kind: CmsPageDeliveryErrorKind,
+  path: string,
+  arabic = false,
+) {
+  if (arabic) {
+    if (kind === 'service-unavailable')
+      return {
+        eyebrow: 'الخدمة غير متاحة',
+        heading: 'Nexus غير متاح مؤقتًا.',
+        body: 'تعذّر الاتصال بالخدمة. يرجى المحاولة بعد قليل.',
+        showRetry: true,
+      };
+    if (kind === 'not-found' && path !== '/')
+      return {
+        eyebrow: 'الصفحة غير موجودة',
+        heading: 'هذه الصفحة غير متاحة.',
+        body: 'يمكنك المتابعة من الصفحة الرئيسية.',
+        showRetry: false,
+      };
+    return {
+      eyebrow: 'Nodics Nexus',
+      heading: 'يجري تجهيز Nexus.',
+      body: 'المحتوى غير متاح بهذه اللغة حاليًا. يمكنك العودة إلى الصفحة الرئيسية بالإنجليزية.',
+      showRetry: true,
+    };
+  }
   if (kind === 'service-unavailable')
     return {
       eyebrow: 'Service unavailable',
@@ -89,8 +120,21 @@ export function CmsPage({
   readonly mapping: NexusHostMapping;
   readonly path: string;
 }) {
+  const arabic = config.defaultLocale.toLowerCase().startsWith('ar');
   const [attempt, setAttempt] = useState(0);
   const [state, setState] = useState<State>({ status: 'loading' });
+  const identity = JSON.stringify([
+    config.endpoints.cms,
+    config.enterpriseCode,
+    mapping.siteCode,
+    config.defaultLocale,
+    config.channel,
+    path,
+  ]);
+  const currentState: State =
+    state.status === 'loading' || state.identity === identity
+      ? state
+      : { status: 'loading' };
   useEffect(() => {
     const controller = new AbortController();
     void resolveCmsPage({
@@ -103,11 +147,15 @@ export function CmsPage({
       timeoutMs: config.requestTimeoutMs,
       signal: controller.signal,
     })
-      .then((page) => setState({ status: 'ready', page }))
+      .then((page) => {
+        if (!controller.signal.aborted)
+          setState({ status: 'ready', identity, page });
+      })
       .catch((error: unknown) => {
         if (!controller.signal.aborted)
           setState({
             status: 'failed',
+            identity,
             kind:
               error instanceof CmsPageDeliveryError
                 ? error.kind
@@ -115,21 +163,32 @@ export function CmsPage({
           });
       });
     return () => controller.abort();
-  }, [attempt, config, mapping, path]);
+  }, [attempt, config, mapping, path, identity]);
   useEffect(() => {
-    if (state.status !== 'ready' || !window.location.hash) return;
+    if (
+      state.status !== 'ready' ||
+      state.identity !== identity ||
+      !window.location.hash
+    )
+      return;
     const target = document.getElementById(window.location.hash.slice(1));
     target?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-  }, [state]);
-  if (state.status === 'loading')
+  }, [state, identity]);
+  if (currentState.status === 'loading')
     return (
-      <section className="page-state page-state-loading" aria-live="polite">
+      <main
+        id="main-content"
+        className="page-state page-state-loading"
+        tabIndex={-1}
+        aria-live="polite"
+      >
         <div className="cms-loading-panel">
           <p className="eyebrow">Nodics Nexus</p>
-          <h1>Opening Nexus.</h1>
+          <h1>{arabic ? 'جارٍ فتح Nexus.' : 'Opening Nexus.'}</h1>
           <p>
-            Thanks for your patience while the latest experience is being
-            prepared.
+            {arabic
+              ? 'شكرًا لانتظارك بينما نجهّز أحدث تجربة.'
+              : 'Thanks for your patience while the latest experience is being prepared.'}
           </p>
           <div className="cms-loading-grid" aria-hidden="true">
             <span />
@@ -137,13 +196,44 @@ export function CmsPage({
             <span />
           </div>
         </div>
-      </section>
+      </main>
     );
-  if (state.status === 'failed') {
-    const fallback = fallbackContent(state.kind, path);
+  if (currentState.status === 'failed') {
+    if (
+      currentState.kind === 'not-found' &&
+      mapping.experience === 'corporate' &&
+      config.endpoints.editorial
+    ) {
+      const route = editorialDetailRoute(path);
+      const listingType =
+        path === '/blogs' ? 'BLOG' : path === '/news' ? 'NEWS' : undefined;
+      if (route || listingType)
+        return (
+          <PublishedSiteShell config={config} mapping={mapping} solidHeader>
+            {route ? (
+              <EditorialArticlePage
+                config={config}
+                mapping={mapping}
+                route={route}
+              />
+            ) : listingType ? (
+              <EditorialListingPage
+                config={config}
+                mapping={mapping}
+                contentType={listingType}
+              />
+            ) : null}
+          </PublishedSiteShell>
+        );
+    }
+    const fallback = fallbackContent(currentState.kind, path, arabic);
     return (
-      <section className="page-state page-state-service" role="alert">
-        <div className="service-state-panel">
+      <main
+        id="main-content"
+        className="page-state page-state-service"
+        tabIndex={-1}
+      >
+        <div className="service-state-panel" role="alert">
           <p className="eyebrow">{fallback.eyebrow}</p>
           <h1>{fallback.heading}</h1>
           <p>{fallback.body}</p>
@@ -156,24 +246,24 @@ export function CmsPage({
                   setAttempt((value) => value + 1);
                 }}
               >
-                Try again
+                {arabic ? 'حاول مجددًا' : 'Try again'}
               </button>
             ) : null}
             <a className="button button-secondary" href="/">
-              Go to home
+              {arabic ? 'الرئيسية بالإنجليزية' : 'Go to home'}
             </a>
           </div>
         </div>
-      </section>
+      </main>
     );
   }
-  const page = state.page.page;
-  const shell = siteShellFromPage(state.page);
+  const page = currentState.page.page;
+  const shell = siteShellFromPage(currentState.page);
   const bodyComponents = page.components.filter(
     (component) => !isSiteShellComponent(component),
   );
-  const hasPageHero = page.components.some(
-    (component) => component.renderer === 'nexus.component.page-hero',
+  const hasPageHero = page.components.some((component) =>
+    ['nexus.component.page-hero', 'nexus.hero'].includes(component.renderer),
   );
   if (
     page.rendererContractVersion !== 1 ||
@@ -184,14 +274,20 @@ export function CmsPage({
     ![0, 1].includes(page.templateContract.contractVersion)
   )
     return (
-      <section className="page-state" role="alert">
-        <h1>Incompatible page contract</h1>
-      </section>
+      <main id="main-content" className="page-state" tabIndex={-1}>
+        <div role="alert">
+          <h1>Incompatible page contract</h1>
+        </div>
+      </main>
     );
   if (page.renderer === 'nexus.page.home' && page.components.length === 0) {
     return (
-      <section className="page-state page-state-service" role="alert">
-        <div className="service-state-panel">
+      <main
+        id="main-content"
+        className="page-state page-state-service"
+        tabIndex={-1}
+      >
+        <div className="service-state-panel" role="alert">
           <p className="eyebrow">Nodics Nexus</p>
           <h1>We are getting Nexus ready.</h1>
           <p>
@@ -210,7 +306,7 @@ export function CmsPage({
             </button>
           </div>
         </div>
-      </section>
+      </main>
     );
   }
   return (

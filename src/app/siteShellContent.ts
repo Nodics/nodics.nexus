@@ -1,3 +1,4 @@
+import { safeHref } from '../cms/renderers/propertyReaders';
 import type { CmsResolvedPageContract } from '../cms/cmsContract';
 import type {
   SiteShellContent,
@@ -21,7 +22,12 @@ function shellLink(value: unknown): SiteShellLink | undefined {
   if (!isRecord(value)) return undefined;
   const label = string(value.label);
   const href = string(value.href);
-  if (!label || !href) return undefined;
+  if (
+    !label ||
+    !href ||
+    (!['axis', '{axisBaseUrl}'].includes(href) && !safeHref(href))
+  )
+    return undefined;
   return Object.freeze({
     label,
     href,
@@ -69,6 +75,28 @@ export function siteShellFromPage(
     ...(string(footer?.properties.contactEmail)
       ? { contactEmail: string(footer?.properties.contactEmail) }
       : {}),
+    languages: Object.freeze(
+      records(header?.properties.languages).flatMap((item) => {
+        const locale = string(item.locale),
+          label = string(item.label),
+          href = string(item.href);
+        if (
+          !locale ||
+          !label ||
+          !href ||
+          !href.startsWith('/') ||
+          href.startsWith('//') ||
+          href.includes('\\')
+        )
+          return [];
+        try {
+          if (Intl.getCanonicalLocales(locale)[0] !== locale) return [];
+        } catch {
+          return [];
+        }
+        return [{ locale, label, href }];
+      }),
+    ),
     navigation: Object.freeze(
       records(header?.properties.navigation)
         .map(shellLink)

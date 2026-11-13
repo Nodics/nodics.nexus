@@ -21,6 +21,15 @@ export const strings = (
     : [];
 export const safeHref = (value: string): string | undefined => {
   if (
+    value !== value.trim() ||
+    [...value].some(
+      (char) =>
+        char.charCodeAt(0) < 32 || char.charCodeAt(0) === 127 || char === '\\',
+    ) ||
+    value.startsWith('//')
+  )
+    return undefined;
+  if (
     value.startsWith('/') ||
     value.startsWith('#') ||
     value.startsWith('mailto:')

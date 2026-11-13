@@ -7,12 +7,14 @@ import type {
 import { siteShellFromPage } from './siteShellContent';
 import { SiteShell, type SiteShellContent } from './SiteShell';
 
-/** Documentation keeps its own publication while using the published host navigation. */
+/** Independent public owner pages retain their own publication while using the published host navigation. */
 export function PublishedSiteShell({
   config,
   mapping,
   children,
+  solidHeader = false,
 }: {
+  readonly solidHeader?: boolean;
   readonly config: NexusRuntimeConfig;
   readonly mapping: NexusHostMapping;
   readonly children: ReactNode;
@@ -47,6 +49,7 @@ export function PublishedSiteShell({
   }, [config, mapping]);
   return (
     <SiteShell
+      solidHeader={solidHeader}
       axisBaseUrl={config.axisBaseUrl}
       shell={
         published?.config === config && published.mapping === mapping

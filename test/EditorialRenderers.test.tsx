@@ -266,7 +266,7 @@ describe('Editorial renderers', () => {
     expect(document.querySelector('script')).toBeNull();
   });
 
-  it('keeps richer CMS detail copy when live editorial detail is shorter', async () => {
+  it('shows the current published Editorial body even when it is shorter than older CMS copy', async () => {
     vi.spyOn(globalThis, 'fetch').mockResolvedValueOnce(
       new Response(
         JSON.stringify({
@@ -304,7 +304,48 @@ describe('Editorial renderers', () => {
     );
 
     await waitFor(() => expect(globalThis.fetch).toHaveBeenCalledTimes(1));
-    expect(screen.getByText(richCmsBody)).toBeInTheDocument();
-    expect(screen.queryByText('Short live detail.')).toBeNull();
+
+    expect(screen.getByText('Short live detail.')).toBeInTheDocument();
+    expect(screen.queryByText(richCmsBody)).toBeNull();
   });
+});
+
+it('keeps the requested Arabic locale on live Editorial detail links', async () => {
+  vi.spyOn(globalThis, 'fetch').mockResolvedValueOnce(
+    new Response(
+      JSON.stringify({
+        responseCode: '200',
+        result: {
+          items: [
+            {
+              slug: 'reviewed-news',
+              title: 'خبر معتمد',
+              summary: 'ملخص معتمد',
+            },
+          ],
+        },
+      }),
+      { status: 200 },
+    ),
+  );
+  render(
+    <NexusRuntimeConfigContext.Provider
+      value={{
+        config: { ...runtimeConfig, defaultLocale: 'ar' },
+        mapping: runtimeMapping,
+      }}
+    >
+      <CmsComponentRenderer
+        channel="web"
+        component={component('nexus.component.news-carousel', { items: [] })}
+      />
+    </NexusRuntimeConfigContext.Provider>,
+  );
+  expect(
+    await screen.findByRole('link', { name: 'خبر معتمد' }),
+  ).toHaveAttribute('href', '/news/reviewed-news?lang=ar');
+  expect(screen.getByRole('link', { name: 'اقرأ المزيد' })).toHaveAttribute(
+    'href',
+    '/news/reviewed-news?lang=ar',
+  );
 });

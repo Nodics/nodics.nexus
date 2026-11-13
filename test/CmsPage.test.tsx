@@ -64,6 +64,10 @@ describe('Nexus CMS page', () => {
         name: 'This Nexus page does not exist.',
       }),
     ).toBeInTheDocument();
+    const main = screen.getByRole('main');
+    expect(main).toHaveAttribute('id', 'main-content');
+    main.focus();
+    expect(main).toHaveFocus();
     expect(screen.queryByText(/CMS/i)).toBeNull();
     expect(screen.queryByRole('button', { name: 'Try again' })).toBeNull();
     expect(screen.getByRole('link', { name: 'Go to home' })).toHaveAttribute(
@@ -175,6 +179,62 @@ describe('Nexus CMS page', () => {
     expect(screen.queryByText(/Axis/i)).toBeNull();
     expect(screen.getByRole('button', { name: 'Try again' })).toBeEnabled();
   });
+
+  it.each(['nexus.component.page-hero', 'nexus.hero'])(
+    'renders one page heading for the delivered hero renderer %s',
+    async (renderer) => {
+      vi.spyOn(globalThis, 'fetch').mockResolvedValue(
+        new Response(
+          JSON.stringify({
+            result: {
+              contractVersion: 0,
+              site: mapping.siteCode,
+              path: '/reviewed-page',
+              locale: 'en',
+              channel: 'web',
+              page: {
+                code: 'reviewed-page',
+                name: 'Internal page name',
+                renderer: 'nexus.page.standard',
+                rendererContractVersion: 1,
+                rendererChannels: ['web'],
+                rendererDeprecated: false,
+                templateContract: {
+                  code: 'corporate',
+                  renderer: 'nexus.template.corporate',
+                  contractVersion: 0,
+                },
+                components: [
+                  cmsComponent(
+                    'reviewed-hero',
+                    renderer,
+                    {
+                      title: 'Reviewed business heading',
+                      body: 'Approved content',
+                    },
+                    0,
+                  ),
+                ],
+              },
+            },
+          }),
+        ),
+      );
+      render(
+        <CmsPage config={config} mapping={mapping} path="/reviewed-page" />,
+      );
+      expect(
+        await screen.findByRole('heading', {
+          name: 'Reviewed business heading',
+          level: 1,
+        }),
+      ).toBeVisible();
+      expect(screen.getAllByRole('heading', { level: 1 })).toHaveLength(1);
+      expect(
+        screen.queryByRole('heading', { name: 'Internal page name' }),
+      ).not.toBeInTheDocument();
+    },
+  );
 
   it('uses the shared second-level banner fallback when a standard page has no delivered hero', async () => {
     vi.spyOn(globalThis, 'fetch').mockResolvedValueOnce(

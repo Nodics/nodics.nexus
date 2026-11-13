@@ -360,7 +360,7 @@ describe('Nexus documentation page', () => {
               audience: ['business', 'developer'],
               maturityState: 'operational',
               accessMode: 'PUBLIC',
-              lifecycleState: 'ONLINE',
+              lifecycleState: 'STAGED',
               visualRequirements: ['data-flow', 'configuration-table'],
               headings: [
                 { level: 2, text: 'Runtime flow', anchor: 'runtime-flow' },
@@ -422,9 +422,21 @@ describe('Nexus documentation page', () => {
     expect(
       await screen.findByRole('heading', { name: 'Runtime Governance' }),
     ).toBeInTheDocument();
+    const search = screen.getByRole('searchbox', {
+      name: 'Search documentation',
+    });
+    fireEvent.change(search, { target: { value: '  governance  runtime ' } });
+    expect(
+      screen.getByRole('link', { name: 'Runtime Governance' }),
+    ).toBeInTheDocument();
+    fireEvent.change(search, { target: { value: 'governance nonexistent' } });
+    expect(
+      screen.queryByRole('link', { name: 'Runtime Governance' }),
+    ).not.toBeInTheDocument();
+    fireEvent.change(search, { target: { value: '' } });
     expect(screen.getByText('operational')).toBeInTheDocument();
     expect(screen.getByText('PUBLIC')).toBeInTheDocument();
-    expect(screen.getByText('ONLINE')).toBeInTheDocument();
+    expect(screen.queryByText('STAGED')).not.toBeInTheDocument();
     expect(screen.queryByText('Visual contract')).not.toBeInTheDocument();
     expect(resolveCmsPage).toHaveBeenCalledWith(
       expect.objectContaining({

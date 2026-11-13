@@ -1,4 +1,6 @@
 import { useEffect, useMemo, useState, type ReactNode } from 'react';
+import { nexusLocale } from '../runtime/nexusLocale';
+import { useNexusUi } from '../runtime/nexusUi';
 import { Brand } from '../components/Brand';
 import { SocialLinks, type SocialChannel } from '../components/SocialLinks';
 
@@ -14,6 +16,11 @@ export interface SiteShellFooterGroup {
 }
 
 export interface SiteShellContent {
+  readonly languages?: readonly {
+    readonly locale: string;
+    readonly label: string;
+    readonly href: string;
+  }[];
   readonly brandLabel?: string;
   readonly brandSubtitle?: string;
   readonly brandSummary?: string;
@@ -102,7 +109,10 @@ function normalizedHref(href: string, axisBaseUrl: string): string {
 }
 
 function normalizedShellHref(item: SiteShellLink, axisBaseUrl: string): string {
-  if (item.id === 'blogs' || item.label.toLowerCase() === 'blogs')
+  if (
+    (item.id === 'blogs' || item.label.toLowerCase() === 'blogs') &&
+    item.href === '/blogs'
+  )
     return '/#blogs';
   return normalizedHref(item.href, axisBaseUrl);
 }
@@ -150,11 +160,14 @@ export function SiteShell({
   axisBaseUrl,
   children,
   shell,
+  solidHeader = false,
 }: {
+  readonly solidHeader?: boolean;
   readonly axisBaseUrl: string;
   readonly children: ReactNode;
   readonly shell?: SiteShellContent;
 }) {
+  const ui = useNexusUi();
   const navigation = shell?.navigation ?? emptyNavigation;
   const [headerIsScrolled, setHeaderIsScrolled] = useState(false);
   const [mobileNavigationOpen, setMobileNavigationOpen] = useState(false);
@@ -235,16 +248,31 @@ export function SiteShell({
   }, [headerIsScrolled, homeSectionNavigation, navigation]);
 
   return (
-    <div className="site-shell">
+    <div className={`site-shell${solidHeader ? ' solid-header-context' : ''}`}>
       {shell && (
         <header
-          className={`site-header${headerIsScrolled ? ' is-scrolled' : ''}${documentationRoute ? ' docs-context' : ''}${documentationLanding ? ' docs-landing-context' : ''}${mobileNavigationOpen ? ' is-menu-open' : ''}`}
+          onKeyDown={(event) => {
+            if (event.key === 'Escape' && mobileNavigationOpen) {
+              event.preventDefault();
+              setMobileNavigationOpen(false);
+              event.currentTarget
+                .querySelector<HTMLButtonElement>('.mobile-navigation-toggle')
+                ?.focus();
+            }
+          }}
+          className={`site-header${solidHeader ? ' is-solid' : ''}${headerIsScrolled ? ' is-scrolled' : ''}${documentationRoute ? ' docs-context' : ''}${documentationLanding ? ' docs-landing-context' : ''}${mobileNavigationOpen ? ' is-menu-open' : ''}`}
         >
-          <Brand label={shell.brandLabel} subtitle={shell.brandSubtitle} />
+          <Brand
+            href={
+              shell.navigation.find((item) => item.id === 'home')?.href || '/'
+            }
+            label={shell.brandLabel}
+            subtitle={shell.brandSubtitle}
+          />
           <button
             aria-controls="primary-navigation"
             aria-expanded={mobileNavigationOpen}
-            aria-label="Toggle primary navigation"
+            aria-label={ui.toggleNavigation}
             className="mobile-navigation-toggle"
             onClick={() => setMobileNavigationOpen((open) => !open)}
             type="button"
@@ -254,7 +282,7 @@ export function SiteShell({
             <span />
           </button>
           <nav
-            aria-label="Primary navigation"
+            aria-label={ui.primaryNavigation}
             className={mobileNavigationOpen ? 'is-open' : undefined}
             id="primary-navigation"
           >
@@ -283,10 +311,34 @@ export function SiteShell({
               );
             })}
           </nav>
+          {Boolean(shell.languages?.length) && (
+            <nav
+              className="site-language-navigation"
+              aria-label="Language / اللغة"
+            >
+              {shell.languages?.map((language) => (
+                <a
+                  key={language.locale}
+                  href={language.href}
+                  hrefLang={language.locale}
+                  lang={language.locale}
+                  aria-current={
+                    nexusLocale('en', window.location.search) ===
+                    language.locale
+                      ? 'true'
+                      : undefined
+                  }
+                >
+                  {language.label}
+                </a>
+              ))}
+            </nav>
+          )}
         </header>
       )}
       <main
         id="main-content"
+        tabIndex={-1}
         className={shell ? undefined : 'site-shell-content-only'}
       >
         {children}
@@ -294,7 +346,13 @@ export function SiteShell({
       {shell && (
         <footer className="site-footer">
           <div className="footer-brand-panel">
-            <Brand label={shell.brandLabel} subtitle={shell.brandSubtitle} />
+            <Brand
+              href={
+                shell.navigation.find((item) => item.id === 'home')?.href || '/'
+              }
+              label={shell.brandLabel}
+              subtitle={shell.brandSubtitle}
+            />
             {shell.brandSummary ? <p>{shell.brandSummary}</p> : null}
             <div className="footer-connect">
               {shell.contactHeading ? <h2>{shell.contactHeading}</h2> : null}

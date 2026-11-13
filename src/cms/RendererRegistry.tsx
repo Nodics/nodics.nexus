@@ -88,5 +88,22 @@ export function CmsComponentRenderer({
         Unsupported content renderer: {component.renderer}
       </section>
     );
-  return <Renderer component={component} />;
+  // Carousel owns its child slides. Other content composes its ordered child graph
+  // through the same renderer/channel/visibility checks as root content.
+  return (
+    <>
+      <Renderer component={component} />
+      {component.renderer !== 'nexus.component.banner-carousel'
+        ? [...component.components]
+            .sort((left, right) => left.index - right.index)
+            .map((child, index) => (
+              <CmsComponentRenderer
+                key={child.code + ':' + index}
+                component={child}
+                channel={channel}
+              />
+            ))
+        : null}
+    </>
+  );
 }

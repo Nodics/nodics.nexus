@@ -14,7 +14,8 @@
   --gold: #f5c400;
   --ink: #242629;
   --charcoal: #3e4349;
-  --muted: #727981;
+  --muted: #636b73;
+  --gold-text: #806200;
   --canvas: #f4f6f8;
   --white: #fff;
   --line: #dfe3e6;
@@ -91,6 +92,12 @@ a {
     padding 250ms ease,
     background-color 250ms ease,
     box-shadow 250ms ease;
+}
+.site-header.is-solid {
+  background: var(--ink);
+}
+.solid-header-context > main {
+  padding-top: 82px;
 }
 .site-header.is-scrolled {
   min-height: 68px;
@@ -4603,7 +4610,7 @@ a {
 }
 .contact-form-kicker {
   margin: 0 0 1rem;
-  color: #967400;
+  color: var(--gold-text);
   font-size: 0.72rem;
   font-weight: 850;
   letter-spacing: 0.17em;
@@ -4675,14 +4682,14 @@ a {
   min-height: 48px;
   padding: 0.8rem 1.5rem;
   border: 1px solid #b8bbbe;
-  color: #73787d;
+  color: var(--muted);
   background: #f2f2f0;
   font-weight: 850;
   cursor: not-allowed;
 }
 .contact-form-action small {
   max-width: 360px;
-  color: #7b8085;
+  color: var(--muted);
   line-height: 1.5;
 }
 .contact-testimonial-panel {
@@ -4810,7 +4817,7 @@ a {
   cursor: pointer;
 }
 .contact-testimonial-form .testimonial-action button:disabled {
-  color: #73787d;
+  color: var(--muted);
   background: #f2f2f0;
   cursor: not-allowed;
 }
@@ -7155,6 +7162,8 @@ a {
   align-items: start;
 }
 .editorial-detail-meta-panel {
+  grid-column: 1;
+  grid-row: 1;
   position: sticky;
   top: 7rem;
   overflow: hidden;
@@ -7228,6 +7237,8 @@ a {
   content: '';
 }
 .editorial-detail-main {
+  grid-column: 2;
+  grid-row: 1;
   padding: clamp(1.25rem, 3vw, 2.5rem);
   border: 1px solid rgba(22, 25, 29, 0.08);
   background: rgba(255, 255, 255, 0.88);
@@ -7262,6 +7273,15 @@ a {
   height: clamp(330px, 39vw, 520px);
   object-fit: cover;
   filter: saturate(0.94) contrast(1.04);
+}
+.editorial-media-unavailable {
+  display: grid;
+  gap: 0.25rem;
+  padding: 1rem 1.25rem;
+  color: var(--ink);
+}
+.editorial-media-unavailable span {
+  font-size: 0.9em;
 }
 .editorial-detail-main .editorial-body {
   color: var(--ink);
@@ -7357,6 +7377,11 @@ a {
   .editorial-special-band {
     grid-template-columns: 1fr;
   }
+  .editorial-detail-main,
+  .editorial-detail-meta-panel {
+    grid-column: auto;
+    grid-row: auto;
+  }
   .editorial-detail-meta-panel {
     position: static;
   }
@@ -7384,3 +7409,71 @@ a {
 }
 
 /* Home solution directions complement the product portfolio. */
+
+/* Published language choices stay available at desktop and narrow widths. */
+.site-language-navigation {
+  display: flex;
+  gap: 0.65rem;
+  align-items: center;
+  white-space: nowrap;
+  margin-inline-start: 1rem;
+  font-size: 0.82rem;
+}
+.site-language-navigation a {
+  color: inherit;
+  text-decoration: none;
+  padding: 0.4rem 0.15rem;
+}
+.site-language-navigation a[aria-current='true'] {
+  color: var(--gold, #d8b563);
+  text-decoration: underline;
+  text-underline-offset: 0.3em;
+}
+[dir='rtl'] .hero-content,
+[dir='rtl'] .section-heading,
+[dir='rtl'] .content-copy {
+  text-align: start;
+}
+[dir='rtl'] .site-shell {
+  font-family: Arial, sans-serif;
+}
+@media (max-width: 850px) {
+  .site-language-navigation {
+    margin-inline-start: auto;
+    margin-inline-end: 1rem;
+  }
+}
+
+/* Keyboard-operable rotation controls retain the shared Gold/Charcoal tokens. */
+.carousel-control {
+  border: 1px solid currentColor;
+  border-radius: 0.4rem;
+  padding: 0.5rem 0.75rem;
+  color: inherit;
+  background: transparent;
+  font: inherit;
+  cursor: pointer;
+  min-height: 44px;
+}
+.hero-controls {
+  position: absolute;
+  z-index: 5;
+  inset-inline-end: 1rem;
+  bottom: 1rem;
+  display: flex;
+  gap: 0.5rem;
+  color: #f4d06f;
+  background: #17191ee6;
+  border-radius: 0.5rem;
+  padding: 0.25rem;
+}
+.testimonial-stage > .carousel-control {
+  grid-column: 1 / -1;
+  justify-self: center;
+}
+
+.solutions-intro > div > .eyebrow,
+.support-grid .feature-card:not(:first-child) > span,
+.support-grid .feature-card:not(:first-child) .feature-symbol {
+  color: var(--gold-text);
+}

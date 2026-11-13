@@ -1,3 +1,4 @@
+import { useNexusUi } from '../../runtime/nexusUi';
 import { useId, useRef, useState } from 'react';
 import type { CmsComponentContract } from '../cmsContract';
 import { referenceImageSource } from '../referenceImages';
@@ -112,6 +113,7 @@ export function ProductPortfolioRenderer({ component }: Props) {
   );
 }
 function ProductShowcaseRenderer({ component }: Props) {
+  const ui = useNexusUi();
   const p = component.properties;
   const products = items(p, 'products');
   const [selected, setSelected] = useState(0);
@@ -139,7 +141,7 @@ function ProductShowcaseRenderer({ component }: Props) {
         <div
           className="product-showcase-tabs"
           role="tablist"
-          aria-label="Explore Nodics products"
+          aria-label={ui.exploreProducts}
         >
           {products.map((product, index) => (
             <button
@@ -154,9 +156,13 @@ function ProductShowcaseRenderer({ component }: Props) {
               onKeyDown={(event) => {
                 let next = index;
                 if (event.key === 'ArrowRight')
-                  next = (index + 1) % products.length;
+                  next =
+                    (index + (ui.rtl ? -1 : 1) + products.length) %
+                    products.length;
                 else if (event.key === 'ArrowLeft')
-                  next = (index - 1 + products.length) % products.length;
+                  next =
+                    (index + (ui.rtl ? 1 : -1) + products.length) %
+                    products.length;
                 else if (event.key === 'Home') next = 0;
                 else if (event.key === 'End') next = products.length - 1;
                 else return;
@@ -218,7 +224,11 @@ function ProductShowcaseRenderer({ component }: Props) {
                 </p>
                 {href && (
                   <a className="product-showcase-detail" href={href}>
-                    Explore {text(product, 'title')}
+                    {text(
+                      product,
+                      'linkLabel',
+                      'Explore ' + text(product, 'title'),
+                    )}
                     <span aria-hidden="true">↗</span>
                   </a>
                 )}
@@ -254,7 +264,7 @@ function ProductShowcaseRenderer({ component }: Props) {
         })}
         <footer className="product-showcase-footer">
           <p>{text(p, 'showcaseNote')}</p>
-          <a href="/contact">
+          <a href={localHref(text(p, 'contactHref')) || '/contact'}>
             {text(p, 'contactLabel')} <span aria-hidden="true">→</span>
           </a>
         </footer>

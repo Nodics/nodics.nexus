@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
+import { EditorialArticleView } from '../../editorial/EditorialArticleView';
 
 import {
   getEditorialArticle,
@@ -74,10 +75,7 @@ function mergeLiveDetail(
   liveArticle: NexusEditorialArticle | undefined,
 ): Article {
   if (!liveArticle) return staticArticle;
-  const staticBodyText = text(staticArticle, 'bodyText');
-  const liveBodyText = liveArticle.body || '';
-  const bodyText =
-    liveBodyText.length > staticBodyText.length ? liveBodyText : staticBodyText;
+  const bodyText = liveArticle.body ?? '';
   return {
     ...staticArticle,
     code: liveArticle.articleCode || text(staticArticle, 'code'),
@@ -93,7 +91,8 @@ function mergeLiveDetail(
       ? liveArticle.takeaways
       : strings(staticArticle, 'takeaways'),
     title: liveArticle.title || text(staticArticle, 'title'),
-    ...(bodyText ? { bodyText } : {}),
+    bodyText,
+    sections: [],
   };
 }
 
@@ -517,18 +516,6 @@ export function EditorialDetailRenderer({ component }: Props) {
   const runtime = useOptionalNexusRuntimeConfig();
   const [liveArticle, setLiveArticle] = useState<NexusEditorialArticle>();
   const p = mergeLiveDetail(component.properties, liveArticle);
-  const source = mediaImageSource(
-    text(p, 'referenceImageCode'),
-    runtime?.config.endpoints.cms,
-  );
-  const tags = articleTags(p).slice(0, 6);
-  const sections = items<Article>(p, 'sections');
-  const takeaways = strings(p, 'takeaways');
-  const href = safeHref(text(p, 'href'));
-  const bodyParagraphs = text(p, 'bodyText')
-    .split(/\n{2,}/u)
-    .map((paragraph) => paragraph.trim())
-    .filter(Boolean);
   const liveDetailAvailable = Boolean(
     runtime?.config.endpoints.editorial &&
     runtime.mapping.siteCode &&
@@ -567,88 +554,10 @@ export function EditorialDetailRenderer({ component }: Props) {
     return () => controller.abort();
   }, [liveDetailAvailable, runtime]);
   return (
-    <article className="editorial-detail editorial-detail-page">
-      <div className="editorial-detail-shell">
-        <aside className="editorial-detail-meta-panel">
-          <p className="eyebrow">{text(p, 'contentTypeCode')}</p>
-          <dl>
-            {text(p, 'category') ? (
-              <div>
-                <dt>Category</dt>
-                <dd>{text(p, 'category')}</dd>
-              </div>
-            ) : null}
-            {displayDate(p) ? (
-              <div>
-                <dt>Published</dt>
-                <dd>{displayDate(p)}</dd>
-              </div>
-            ) : null}
-            {text(p, 'author') ? (
-              <div>
-                <dt>Owner</dt>
-                <dd>{text(p, 'author')}</dd>
-              </div>
-            ) : null}
-          </dl>
-          {takeaways.length ? (
-            <div className="editorial-takeaways">
-              <b>Key takeaways</b>
-              <ul>
-                {takeaways.map((item) => (
-                  <li key={item}>{item}</li>
-                ))}
-              </ul>
-            </div>
-          ) : null}
-        </aside>
-        <div className="editorial-detail-main">
-          <div className="editorial-card-meta">
-            <span>{text(p, 'contentTypeCode', 'Article')}</span>
-            {text(p, 'category') ? <span>{text(p, 'category')}</span> : null}
-            {displayDate(p) ? <span>{displayDate(p)}</span> : null}
-          </div>
-          <h1>{text(p, 'title')}</h1>
-          <p className="editorial-summary">{text(p, 'summary')}</p>
-          {source ? (
-            <figure className="editorial-detail-media">
-              <img src={source} alt={text(p, 'imageAlt')} loading="lazy" />
-            </figure>
-          ) : null}
-          {bodyParagraphs.length ? (
-            <div className="editorial-body">
-              {bodyParagraphs.map((paragraph) => (
-                <p key={paragraph}>{paragraph}</p>
-              ))}
-            </div>
-          ) : null}
-          {sections.length ? (
-            <div className="editorial-detail-sections">
-              {sections.map((section, index) => (
-                <section key={`${text(section, 'title')}-${index}`}>
-                  <span>{String(index + 1).padStart(2, '0')}</span>
-                  <div>
-                    <h2>{text(section, 'title')}</h2>
-                    <p>{text(section, 'body')}</p>
-                  </div>
-                </section>
-              ))}
-            </div>
-          ) : null}
-          {tags.length ? (
-            <div className="editorial-card-tags editorial-detail-tags">
-              {tags.map((tag) => (
-                <span key={tag}>{tag}</span>
-              ))}
-            </div>
-          ) : null}
-          {href ? (
-            <a className="editorial-detail-back" href={href}>
-              {text(p, 'linkLabel', 'Back to listing')}
-            </a>
-          ) : null}
-        </div>
-      </div>
-    </article>
+    <EditorialArticleView
+      article={p}
+      cmsBaseUrl={runtime?.config.endpoints.cms}
+      locale={runtime?.config.defaultLocale}
+    />
   );
 }

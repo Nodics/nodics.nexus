@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { resolveCmsPage } from '../cms/cmsClient';
 import type { CmsResolvedPageContract } from '../cms/cmsContract';
 import type { NexusRuntimeConfig } from '../runtime/runtimeConfig';
@@ -36,21 +36,41 @@ export function DocumentationSourceNavigation({
   config,
   path,
   currentPage,
+  currentPageLoading = false,
 }: {
   readonly config: NexusRuntimeConfig;
   readonly path: string;
   readonly currentPage?: CmsResolvedPageContract;
+  readonly currentPageLoading?: boolean;
 }) {
   const activeSource = documentationSourceForPath(path);
+  const delegatedSite =
+    currentPage?.site || (currentPageLoading ? activeSource?.site : undefined);
   const [attempt, setAttempt] = useState(0);
   const [snapshot, setSnapshot] = useState<{
     config: NexusRuntimeConfig;
     attempt: number;
     sources: Record<string, SourceState>;
   }>();
+  const observations = useRef<
+    | {
+        config: NexusRuntimeConfig;
+        attempt: number;
+        sources: Record<string, SourceState>;
+      }
+    | undefined
+  >(undefined);
   useEffect(() => {
+    if (
+      observations.current?.config !== config ||
+      observations.current.attempt !== attempt
+    )
+      observations.current = { config, attempt, sources: {} };
+    const observed = observations.current;
     const controller = new AbortController();
     for (const source of documentationRoutes) {
+      if (source.site === delegatedSite || observed.sources[source.site])
+        continue;
       void (async () => {
         let result: SourceState;
         try {
@@ -73,6 +93,7 @@ export function DocumentationSourceNavigation({
           result = { title: '', available: false };
         }
         if (controller.signal.aborted) return;
+        observed.sources[source.site] = result;
         setSnapshot((previous) => ({
           config,
           attempt,
@@ -86,7 +107,7 @@ export function DocumentationSourceNavigation({
       })();
     }
     return () => controller.abort();
-  }, [config, attempt]);
+  }, [config, attempt, delegatedSite]);
   const sources =
     snapshot?.config === config && snapshot.attempt === attempt
       ? snapshot.sources

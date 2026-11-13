@@ -1,6 +1,8 @@
 import { requestNodicsJson, type NodicsClientInput } from './nodicsClient';
 
 export interface NexusEditorialArticle {
+  readonly siteCode?: string;
+  readonly localeCode?: string;
   readonly articleCode?: string;
   readonly contentTypeCode?: string;
   readonly slug?: string;
@@ -59,6 +61,8 @@ function article(value: unknown): NexusEditorialArticle | undefined {
     candidate === undefined ? {} : { [key]: candidate };
   return {
     ...optional('articleCode', stringValue(input, 'articleCode')),
+    ...optional('siteCode', stringValue(input, 'siteCode')),
+    ...optional('localeCode', stringValue(input, 'localeCode')),
     ...optional('body', bodyText(input.body)),
     ...optional('contentTypeCode', stringValue(input, 'contentTypeCode')),
     ...optional('href', slug ? `/articles/${slug}` : undefined),

@@ -8,7 +8,10 @@ import {
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { NexusBootstrap } from '../src/app/NexusBootstrap';
 import { resolveCmsPage } from '../src/cms/cmsClient';
-vi.mock('../src/cms/cmsClient', () => ({ resolveCmsPage: vi.fn() }));
+vi.mock('../src/cms/cmsClient', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('../src/cms/cmsClient')>()),
+  resolveCmsPage: vi.fn(),
+}));
 import {
   loadNexusRuntimeConfig,
   resolveHostMapping,
@@ -65,6 +68,31 @@ afterEach(() => {
 });
 
 describe('Nexus bootstrap routing', () => {
+  it('uses the selected language and follows locale history without changing the admitted Site', async () => {
+    window.history.replaceState({}, '', '/?lang=ar&site=foreign');
+    vi.mocked(loadNexusRuntimeConfig).mockResolvedValue(config);
+    vi.mocked(resolveHostMapping).mockReturnValue(mapping);
+    vi.mocked(resolveCmsPage).mockRejectedValue(new Error('Not published'));
+    render(<NexusBootstrap />);
+    await waitFor(() =>
+      expect(resolveCmsPage).toHaveBeenCalledWith(
+        expect.objectContaining({ site: 'nexusCorporateSite', locale: 'ar' }),
+      ),
+    );
+    expect(document.documentElement).toHaveAttribute('lang', 'ar');
+    expect(document.documentElement).toHaveAttribute('dir', 'rtl');
+    await act(async () => {
+      window.history.pushState({}, '', '/?lang=en');
+      window.dispatchEvent(new PopStateEvent('popstate'));
+    });
+    await waitFor(() =>
+      expect(resolveCmsPage).toHaveBeenLastCalledWith(
+        expect.objectContaining({ site: 'nexusCorporateSite', locale: 'en' }),
+      ),
+    );
+    expect(document.documentElement).toHaveAttribute('dir', 'ltr');
+    expect(loadNexusRuntimeConfig).toHaveBeenCalledTimes(1);
+  });
   it('offers explicit bootstrap recovery without exposing transport diagnostics or skipping configuration', async () => {
     window.history.replaceState({}, '', '/docs/framework');
     let finish!: (value: NexusRuntimeConfig) => void;

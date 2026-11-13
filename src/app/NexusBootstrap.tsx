@@ -1,10 +1,12 @@
-import { lazy, Suspense, useEffect, useState } from 'react';
+import { lazy, Suspense, useEffect, useMemo, useState } from 'react';
 import {
   loadNexusRuntimeConfig,
   resolveHostMapping,
   type NexusHostMapping,
   type NexusRuntimeConfig,
 } from '../runtime/runtimeConfig';
+import { nexusLocale, localeDirection } from '../runtime/nexusLocale';
+import { nexusUi } from '../runtime/nexusUi';
 import { CmsPage } from './CmsPage';
 import { PublishedSiteShell } from './PublishedSiteShell';
 
@@ -25,9 +27,36 @@ export function NexusBootstrap() {
   const [path, setPath] = useState(
     () => window.location.pathname.replace(/\/+$/u, '') || '/',
   );
+  const [search, setSearch] = useState(() => window.location.search);
+  const selectedLocale =
+    state.status === 'ready'
+      ? nexusLocale(state.config.defaultLocale, search)
+      : '';
+  const effectiveConfig = useMemo(
+    () =>
+      state.status === 'ready'
+        ? {
+            ...state.config,
+            defaultLocale: selectedLocale,
+          }
+        : undefined,
+    [state, selectedLocale],
+  );
   useEffect(() => {
-    const followHistory = () =>
+    if (!effectiveConfig) return;
+    document.documentElement.lang = effectiveConfig.defaultLocale;
+    const skip = document.querySelector('.skip-link');
+    if (skip)
+      skip.textContent = nexusUi(effectiveConfig.defaultLocale).skipContent;
+    document.documentElement.dir = localeDirection(
+      effectiveConfig.defaultLocale,
+    );
+  }, [effectiveConfig]);
+  useEffect(() => {
+    const followHistory = () => {
       setPath(window.location.pathname.replace(/\/+$/u, '') || '/');
+      setSearch(window.location.search);
+    };
     const navigateDocumentation = (event: MouseEvent) => {
       if (
         event.defaultPrevented ||
@@ -95,14 +124,18 @@ export function NexusBootstrap() {
   }, [attempt]);
   if (state.status === 'loading')
     return (
-      <main className="page-state" role="status">
-        Preparing Nodics Nexus…
+      <main id="main-content" className="page-state" tabIndex={-1}>
+        <span role="status">Preparing Nodics Nexus…</span>
       </main>
     );
   if (state.status === 'failed')
     return (
-      <main className="page-state page-state-service" role="alert">
-        <div className="service-state-panel">
+      <main
+        id="main-content"
+        className="page-state page-state-service"
+        tabIndex={-1}
+      >
+        <div className="service-state-panel" role="alert">
           <h1>Nexus is temporarily unavailable.</h1>
           <p>We cannot open the site right now. Please try again shortly.</p>
           <div className="service-state-actions">
@@ -120,9 +153,10 @@ export function NexusBootstrap() {
         </div>
       </main>
     );
+  if (!effectiveConfig) return null;
   if (path === '/docs' || path.startsWith('/docs/'))
     return (
-      <PublishedSiteShell config={state.config} mapping={state.mapping}>
+      <PublishedSiteShell config={effectiveConfig} mapping={state.mapping}>
         <Suspense
           fallback={
             <div className="page-state" role="status">
@@ -130,9 +164,11 @@ export function NexusBootstrap() {
             </div>
           }
         >
-          <DocumentationPage config={state.config} path={path} />
+          <DocumentationPage config={effectiveConfig} path={path} />
         </Suspense>
       </PublishedSiteShell>
     );
-  return <CmsPage config={state.config} mapping={state.mapping} path={path} />;
+  return (
+    <CmsPage config={effectiveConfig} mapping={state.mapping} path={path} />
+  );
 }

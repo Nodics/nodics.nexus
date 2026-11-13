@@ -1,3 +1,11 @@
+/** Preserves HTTP evidence for public route handling without parsing error text. */
+export class NodicsApiError extends Error {
+  constructor(readonly status: number) {
+    super(`Nodics API returned HTTP ${status}`);
+    this.name = 'NodicsApiError';
+  }
+}
+
 export interface NodicsClientInput {
   readonly baseUrl: string;
   readonly enterpriseCode: string;
@@ -55,8 +63,7 @@ export async function requestNodicsJson<T>(
       },
     );
     const payload: unknown = await response.json().catch(() => undefined);
-    if (!response.ok)
-      throw new Error(`Nodics API returned HTTP ${response.status}`);
+    if (!response.ok) throw new NodicsApiError(response.status);
     if (!payload || typeof payload !== 'object' || Array.isArray(payload))
       throw new Error('Nodics API returned an invalid response envelope');
     const envelope = payload as {
