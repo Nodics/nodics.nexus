@@ -4203,6 +4203,7 @@ a {
 }
 .blog-publication-card {
   display: grid;
+  align-content: start;
   gap: 1.2rem;
   animation: editorial-enter 760ms cubic-bezier(0.22, 1, 0.36, 1) both;
 }

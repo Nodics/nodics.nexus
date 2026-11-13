@@ -1,4 +1,4 @@
-import { render, screen, waitFor } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { CmsComponentRenderer } from '../src/cms/RendererRegistry';
 import type { CmsComponentContract } from '../src/cms/cmsContract';
@@ -51,6 +51,76 @@ afterEach(() => {
 });
 
 describe('Editorial renderers', () => {
+  it.each(['news', 'blog'])(
+    'keeps %s cards usable without optional media',
+    (kind) => {
+      const { container } = render(
+        <CmsComponentRenderer
+          channel="web"
+          component={component(`nexus.component.${kind}-carousel`, {
+            heading: 'Published updates',
+            items: [
+              {
+                title: 'Published article',
+                summary: 'Readable summary.',
+                href: '/news/article',
+              },
+            ],
+          })}
+        />,
+      );
+      expect(
+        screen.getByRole('link', { name: 'Published article' }),
+      ).toHaveAttribute('href', '/news/article');
+      expect(screen.getByText('Readable summary.')).toBeVisible();
+      expect(container.querySelector('.blog-publication-image')).toBeNull();
+      expect(
+        screen.queryByRole('link', { name: 'Open Published article' }),
+      ).not.toBeInTheDocument();
+    },
+  );
+
+  it.each(['error', 'one-pixel'])(
+    'removes %s optional media while preserving the article destination',
+    (failure) => {
+      const { container } = render(
+        <CmsComponentRenderer
+          channel="web"
+          component={component('nexus.component.news-carousel', {
+            items: [
+              {
+                title: 'Published article',
+                href: '/news/article',
+                referenceImageCode:
+                  '/nodics/media/v0/content/nodicsFeaturesArchitecture',
+                imageAlt: 'Article preview',
+              },
+            ],
+          })}
+        />,
+      );
+      expect(
+        screen.getByRole('link', { name: 'Open Published article' }),
+      ).toBeVisible();
+      const image = screen.getByRole('img', { name: 'Article preview' });
+      if (failure === 'error') fireEvent.error(image);
+      else {
+        Object.defineProperties(image, {
+          naturalWidth: { value: 1 },
+          naturalHeight: { value: 1 },
+        });
+        fireEvent.load(image);
+      }
+      expect(container.querySelector('.blog-publication-image')).toBeNull();
+      expect(
+        screen.queryByRole('link', { name: 'Open Published article' }),
+      ).not.toBeInTheDocument();
+      expect(
+        screen.getByRole('link', { name: 'Published article' }),
+      ).toHaveAttribute('href', '/news/article');
+    },
+  );
+
   it('renders a bounded accessible article listing', () => {
     render(
       <CmsComponentRenderer
@@ -141,7 +211,8 @@ describe('Editorial renderers', () => {
               summary: 'A safe summary.',
               href: '/blog/composable-content',
               linkLabel: 'Read insight',
-              referenceImageCode: 'nodicsFeaturesArchitecture',
+              referenceImageCode:
+                '/nodics/media/v0/content/nodicsFeaturesArchitecture',
               imageAlt: 'Composable content preview',
             },
             {
@@ -150,7 +221,8 @@ describe('Editorial renderers', () => {
               summary: 'Another safe summary.',
               href: '/blog/composable-operations',
               linkLabel: 'Read insight',
-              referenceImageCode: 'nodicsDeveloperExperience',
+              referenceImageCode:
+                '/nodics/media/v0/content/nodicsDeveloperExperience',
               imageAlt: 'Composable operations preview',
             },
           ],

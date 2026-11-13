@@ -42,6 +42,49 @@ type EditorialCard = {
   imageAlt?: unknown;
 };
 
+/** Optional editorial media must not leave an empty frame or focusable link. */
+const EditorialPreviewImage = ({
+  source,
+  href,
+  title,
+  alt,
+}: {
+  source: string;
+  href?: string;
+  title: string;
+  alt: string;
+}) => {
+  const [failed, setFailed] = useState(false);
+  const ui = useNexusUi();
+  if (failed) return null;
+  const preview = (
+    <img
+      src={source}
+      alt={alt}
+      loading="lazy"
+      onError={() => setFailed(true)}
+      onLoad={({ currentTarget }) => {
+        if (
+          currentTarget.naturalWidth === 1 &&
+          currentTarget.naturalHeight === 1
+        )
+          setFailed(true);
+      }}
+    />
+  );
+  return (
+    <div className="blog-publication-image">
+      {href ? (
+        <a href={href} aria-label={`${ui.open} ${title}`}>
+          {preview}
+        </a>
+      ) : (
+        preview
+      )}
+    </div>
+  );
+};
+
 const slugFromHref = (value: unknown): string | undefined => {
   if (typeof value !== 'string') return undefined;
   const parts = value.split('/').filter(Boolean);
@@ -1537,36 +1580,19 @@ function EditorialCarousel({
                         data-publication-index={index}
                         key={`${title}-${index}`}
                       >
-                        <div className="blog-publication-image">
-                          {blogHref ? (
-                            <a
-                              href={blogHref}
-                              aria-label={`${ui.open} ${title || 'blog detail'}`}
-                            >
-                              {blogSource ? (
-                                <img
-                                  src={blogSource}
-                                  alt={
-                                    typeof blog.imageAlt === 'string'
-                                      ? blog.imageAlt
-                                      : ''
-                                  }
-                                  loading="lazy"
-                                />
-                              ) : null}
-                            </a>
-                          ) : blogSource ? (
-                            <img
-                              src={blogSource}
-                              alt={
-                                typeof blog.imageAlt === 'string'
-                                  ? blog.imageAlt
-                                  : ''
-                              }
-                              loading="lazy"
-                            />
-                          ) : null}
-                        </div>
+                        {blogSource ? (
+                          <EditorialPreviewImage
+                            key={blogSource}
+                            source={blogSource}
+                            href={blogHref}
+                            title={title}
+                            alt={
+                              typeof blog.imageAlt === 'string'
+                                ? blog.imageAlt
+                                : ''
+                            }
+                          />
+                        ) : null}
                         <div className="blog-publication-copy">
                           <small>
                             {typeof blog.label === 'string'

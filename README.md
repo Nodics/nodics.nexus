@@ -139,6 +139,12 @@ header item or submenu. About remains active for the Features section/page.
 
 ## Editorial renderer extension
 
+Homepage News and Blog cards treat preview media as optional. An absent or failed
+image, including an unusable one-pixel preview, leaves the title, summary and article link readable without an empty frame
+or an additional empty focus target. Media failure never changes publication
+visibility or substitutes another article's image. The Editorial renderer tests
+cover both missing references and image-load failure.
+
 Nexus provides nine allow-listed renderer keys: listing, card, detail, featured, latest, taxonomy, author, related, and series. They consume only sanitized properties delivered through CMS component contracts and never execute backend-provided markup, scripts, imports, or event handlers.
 
 A customer adds a replacement by implementing a focused React component, registering a project-owned logical key in the local renderer registry, and contributing the matching CMS type-code and renderer-mapping records from the customer backend data pack. Editorial data, workflow, publication, permissions, and delivery filtering remain backend-owned.
